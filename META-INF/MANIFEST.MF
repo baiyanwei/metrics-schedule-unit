@@ -8,7 +8,7 @@ Bundle-Vendor: secpro
 Require-Bundle: org.eclipse.core.runtime,
  com.secpro.platform.log;bundle-version="1.0.0",
  com.secpro.platform.core;bundle-version="1.0.0",
- com.secpro.platform.api;bundle-version="1.0.0",
- com.secpro.platform.lib;bundle-version="1.0.0"
+ com.secpro.platform.api;bundle-version="1.0.0"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
+Import-Package: org.json
