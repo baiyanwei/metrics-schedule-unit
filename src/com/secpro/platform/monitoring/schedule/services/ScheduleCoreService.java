@@ -1,7 +1,5 @@
 package com.secpro.platform.monitoring.schedule.services;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -10,48 +8,39 @@ import java.util.List;
 import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
 import com.secpro.platform.core.metrics.Metric;
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.services.ServiceInfo;
+import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
-import com.secpro.platform.monitoring.schedule.Activator;
-import com.secpro.platform.monitoring.schedule.services.taskunit.RegionTaskStack;
+import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
+import com.secpro.platform.monitoring.schedule.services.scheduleunit.RegionScheduleStack;
 
 /**
  * @author baiyanwei Jul 6, 2013
  * 
  */
-@ServiceInfo(description = "The main service of Metrics-Collect-Agent", configurationPath = "msu/services/TaskScheduleCoreService/")
+@ServiceInfo(description = "ScheduleCoreService", configurationPath = "app/msu/services/ScheduleCoreService/")
 public class ScheduleCoreService extends AbstractMetricMBean implements IService, DynamicMBean {
 
 	//
 	// Logging Object
 	//
-	final private static PlatformLogger theLogger = PlatformLogger.getLogger(ScheduleCoreService.class);
+	final private static PlatformLogger theLogger = PlatformLogger.getLogger(TaskCoreService.class);
 	//
-	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.mca:type=MonitoringService")
-	public String _jmxObjectName = "secpro.mca:type=MonitoringService";
+	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=ScheduleCoreService")
+	public String _jmxObjectName = "secpro.msu:type=ScheduleCoreService";
 
-	// cache the version number
-	@Metric(description = "The version number of MSU")
-	public String _version = Activator._version.toString();
-	//
-	@XmlElement(name = "isFetchCacheTaskOnError", type = Boolean.class, defaultValue = "true")
-	public Boolean _isFetchCacheTaskOnError = new Boolean(true);
-
-	private HashMap<String, RegionTaskStack> _regionTaskStackMap = new HashMap<String, RegionTaskStack>();
+	private HashMap<String, RegionScheduleStack> _regionScheduleStackMap = new HashMap<String, RegionScheduleStack>();
 
 	@Override
 	public void start() throws PlatformException {
 		// register itself as dynamic bean
 		this.registerMBean(_jmxObjectName, this);
 		//
-		initOperationData();
+		initScheduleData();
 		// theLogger.info("startUp", _workflowThreshold.intValue(),
 		// _fetchTSSTaskInterval, _operationCapabilities);
 	}
@@ -65,34 +54,34 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	/**
 	 * ready the location and operation from the database.
 	 */
-	private void initOperationData() {
+	private void initScheduleData() {
 		// #1 read the task records from database
-		List<String[]> dataArrays = new ArrayList<String[]>();
+		List<String[]> dataArrays = getScheduleRecordsFromDataBase();
 		// #2 group the task record by region and operation.
-		HashMap<String, HashMap<String, ArrayList<String[]>>> regionGroupDateMap = groupTaskRecordByRegionOperation(dataArrays);
+		HashMap<String, HashMap<String, ArrayList<String[]>>> regionGroupDateMap = groupScheduleRecordByRegionOperation(dataArrays);
 		// #3
-		synchronized (_regionTaskStackMap) {
+		synchronized (_regionScheduleStackMap) {
 			HashMap<String, ArrayList<String[]>> regionOperationMap = null;
 			String operationKey = null;
-			ArrayList<String[]> taskRowList = null;
+			ArrayList<String[]> scheduleRowList = null;
 			for (Iterator<String> regionIter = regionGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
 				//
-				RegionTaskStack regionStack = new RegionTaskStack();
+				RegionScheduleStack regionScheduleStack = new RegionScheduleStack();
 				try {
-					regionStack.start();
+					regionScheduleStack.start();
 				} catch (Exception e1) {
-					e1.printStackTrace();
+					theLogger.exception(e1);
 					continue;
 				}
-				regionStack._region = regionIter.next();
-				regionOperationMap = regionGroupDateMap.get(regionStack._region);
+				regionScheduleStack._region = regionIter.next();
+				regionOperationMap = regionGroupDateMap.get(regionScheduleStack._region);
 				for (Iterator<String> operationIter = regionOperationMap.keySet().iterator(); operationIter.hasNext();) {
 					operationKey = operationIter.next();
-					taskRowList = regionOperationMap.get(operationKey);
+					scheduleRowList = regionOperationMap.get(operationKey);
 					try {
-						regionStack.putTasks(operationKey, analyesTaskContent(taskRowList));
+						regionScheduleStack.putSchedules(operationKey, buildMSUScheduleByRecord(scheduleRowList), false);
 					} catch (Exception e) {
-						e.printStackTrace();
+						theLogger.exception(e);
 						continue;
 					}
 				}
@@ -101,7 +90,7 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 
 	}
 
-	private HashMap<String, HashMap<String, ArrayList<String[]>>> groupTaskRecordByRegionOperation(List<String[]> dataArrays) {
+	private HashMap<String, HashMap<String, ArrayList<String[]>>> groupScheduleRecordByRegionOperation(List<String[]> dataArrays) {
 		HashMap<String, HashMap<String, ArrayList<String[]>>> regionDateMap = new HashMap<String, HashMap<String, ArrayList<String[]>>>();
 		String[] rowDatas = null;
 		for (int i = 0; i < dataArrays.size(); i++) {
@@ -125,56 +114,126 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 					}
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				theLogger.exception(e);
 				continue;
 			}
 		}
 		return regionDateMap;
 	}
 
-	private ArrayList<JSONObject> analyesTaskContent(ArrayList<String[]> taskContentList) {
-		return null;
+	/**
+	 * ready the record from DataBase and analyze into String Array.
+	 * 
+	 * @return
+	 */
+	private List<String[]> getScheduleRecordsFromDataBase() {
+		// TODO Auto-generated method stub
+		return new ArrayList<String[]>();
 	}
 
-	public JSONArray fetchTaskByRequest(String region, String operatons, String num) {
-		return null;
+	/**
+	 * @param scheduleContentList
+	 * @return
+	 */
+	private ArrayList<MSUSchedule> buildMSUScheduleByRecord(ArrayList<String[]> scheduleContentList) {
+		if (Assert.isEmptyCollection(scheduleContentList) == true) {
+			return new ArrayList<MSUSchedule>();
+		}
+		ArrayList<MSUSchedule> msuScheduleList = new ArrayList<MSUSchedule>();
+		String[] rowData = null;
+		for (int i = 0; i < scheduleContentList.size(); i++) {
+			try {
+				rowData = scheduleContentList.get(i);
+				msuScheduleList.add(new MSUSchedule(System.currentTimeMillis(), rowData[1]));
+			} catch (Exception e) {
+				theLogger.exception(e);
+				continue;
+			}
+		}
+		return msuScheduleList;
+	}
+
+	/**
+	 * get Task Content by ID
+	 * 
+	 * @param region
+	 * @param taskIDs
+	 * @return
+	 */
+	public List<MSUSchedule> getMSUSchedules(String region, String operation, String taskID) {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operation) == true || Assert.isEmptyString(taskID) == true) {
+			return new ArrayList<MSUSchedule>();
+		}
+		return this._regionScheduleStackMap.get(region).findSchedules(operation,taskID);
+	}
+	/**
+	 * get Task Content by ID
+	 * 
+	 * @param region
+	 * @param taskID
+	 * @return
+	 */
+	public HashMap<String,List<MSUSchedule>> getMSUSchedules(String region, String taskID) {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
+			return new HashMap<String,List<MSUSchedule>>();
+		}
+
+		return this._regionScheduleStackMap.get(region).findSchedules(taskID);
+	}
+	/**
+	 * put or insert a MSU task into region.
+	 * 
+	 * @param msuTask
+	 * @return
+	 */
+	public MSUSchedule putMSUSchedule(MSUSchedule msuSchedule) {
+		if (msuSchedule == null) {
+			return null;
+		}
+		try {
+			// return
+			// this._regionScheduleStackMap.get(msuTask._region).putMSUSchedule(msuTask);
+			return null;
+		} catch (Exception e) {
+			theLogger.exception(e);
+			return null;
+		}
+	}
+
+	/**
+	 * remove one task in region by task ID.
+	 * 
+	 * @param region
+	 * @param taskID
+	 * @return
+	 */
+	public void removeMSUSchedule(String region, String taskID) {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
+			return;
+		}
+		// return this._regionTaskStackMap.get(region).removeMUSTask(taskID);
 	}
 
 	//
 	// STATISTICAL METHODS
 	//
-	@Metric(description = "get the error rate of the MonitoringService")
-	public double fetchDelayRate() {
-		return 0.0D;
-	}
-
-	@Metric(description = "get the processing average of MonitoringService")
-	public double getTaskWaitToFetchAverage() {
-		return 0.0D;
-	}
-
-	@Metric(description = "get the system total memory status")
-	public long getSystemTotalMemory() {
-		return Runtime.getRuntime().totalMemory();
-	}
-
-	@Metric(description = "get the system free memory status")
-	public long getSystemFreeMemory() {
-		return Runtime.getRuntime().freeMemory();
-	}
-
-	@Metric(description = "get the system load average status")
-	public double getSystemLoadAverage() {
-		OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-		double cpuTime = 0;
-		if (os instanceof OperatingSystemMXBean) {
-			cpuTime = ((OperatingSystemMXBean) os).getSystemLoadAverage();
+	@Metric(description = "get size of the task region ")
+	public String getRegionTaskSize(String region) {
+		if (Assert.isEmptyString(region) == true || this._regionScheduleStackMap.containsKey(region) == false) {
+			return "No data";
 		}
-		return cpuTime;
+		return this._regionScheduleStackMap.get(region).reportStackSize();
 	}
 
-	@Metric(description = "get size of the task queue times ")
-	public int getTaskQueueTimesSize() {
-		return 0;
+	@Metric(description = "get every detail of task region ")
+	public String getEveryRegionTaskSize() {
+		StringBuffer reportStr = new StringBuffer();
+		String region = null;
+		for (Iterator<String> regionIter = this._regionScheduleStackMap.keySet().iterator(); regionIter.hasNext();) {
+			region = regionIter.next();
+			reportStr.append(reportStr).append("\t\t").append(this._regionScheduleStackMap.get(region).reportStackSize()).append("\r\n");
+		}
+		return reportStr.toString();
 	}
+
 }

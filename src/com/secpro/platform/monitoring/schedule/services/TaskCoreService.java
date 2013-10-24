@@ -30,8 +30,8 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	//
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(TaskCoreService.class);
 	//
-	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.mca:type=TaskCoreService")
-	public String _jmxObjectName = "secpro.mca:type=TaskCoreService";
+	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=TaskCoreService")
+	public String _jmxObjectName = "secpro.msu:type=TaskCoreService";
 
 	private HashMap<String, RegionTaskStack> _regionTaskStackMap = new HashMap<String, RegionTaskStack>();
 

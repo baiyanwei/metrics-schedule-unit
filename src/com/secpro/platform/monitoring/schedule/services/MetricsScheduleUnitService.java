@@ -27,12 +27,12 @@ import com.secpro.platform.monitoring.schedule.services.taskunit.RegionTaskStack
  * 
  */
 @ServiceInfo(description = "The main service of Metrics-Collect-Agent", configurationPath = "msu/services/TaskScheduleCoreService/")
-public class ScheduleStackService extends AbstractMetricMBean implements IService, DynamicMBean {
+public class MetricsScheduleUnitService extends AbstractMetricMBean implements IService, DynamicMBean {
 
 	//
 	// Logging Object
 	//
-	final private static PlatformLogger theLogger = PlatformLogger.getLogger(ScheduleStackService.class);
+	final private static PlatformLogger theLogger = PlatformLogger.getLogger(MetricsScheduleUnitService.class);
 	//
 	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.mca:type=MonitoringService")
 	public String _jmxObjectName = "secpro.mca:type=MonitoringService";
