@@ -1,12 +1,10 @@
 package com.secpro.platform.monitoring.schedule.services.taskunit;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-
-import org.json.JSONObject;
 
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.utils.Assert;
-import com.secpro.platform.monitoring.schedule.task.TaskConstant;
 
 /**
  * @author baiyanwei Oct 17, 2013
@@ -16,7 +14,8 @@ import com.secpro.platform.monitoring.schedule.task.TaskConstant;
  */
 public class RegionTaskStack implements IService {
 	public String _region = "HB";
-	private HashMap<String, JSONObject> _regionTaskMap = new HashMap<String, JSONObject>();
+	// key:Task ID, Value: Task Content
+	private HashMap<String, MSUTask> _regionTaskMap = new HashMap<String, MSUTask>();
 
 	@Override
 	public void start() throws Exception {
@@ -30,21 +29,34 @@ public class RegionTaskStack implements IService {
 	/**
 	 * put a task into bottom
 	 * 
-	 * @param taskObj
+	 * @param msuTask
 	 */
-	public void putTask(JSONObject taskObj) throws Exception {
-		if (taskObj == null || taskObj.has(TaskConstant.TASK_ID) == false) {
-			return;
+	public MSUTask putMSUTask(MSUTask msuTask) throws Exception {
+		if (msuTask == null) {
+			return null;
 		}
-		String taskID = taskObj.getString(TaskConstant.TASK_ID);
-		if (Assert.isEmptyString(taskID) == false) {
+		synchronized (_regionTaskMap) {
+			if (_regionTaskMap.containsKey(msuTask._id) == false) {
+				this._regionTaskMap.put(msuTask._id, msuTask);
+			} else {
+				throw new Exception(msuTask._id + " is already in Stack.");
+			}
+		}
+		return msuTask;
+	}
+
+	/**
+	 * put tasks into stack.
+	 * 
+	 * @param taskList
+	 */
+	public void putTasks(ArrayList<MSUTask> msuTaskList) {
+		if (Assert.isEmptyCollection(msuTaskList) == true) {
 			return;
 		}
 		synchronized (_regionTaskMap) {
-			if (_regionTaskMap.containsKey(taskID) == false) {
-				this._regionTaskMap.put(taskID, taskObj);
-			} else {
-				throw new Exception(taskID + " is already in Stack.");
+			for (int i = 0; i < msuTaskList.size(); i++) {
+				this._regionTaskMap.put(msuTaskList.get(i)._id, msuTaskList.get(i));
 			}
 		}
 	}
@@ -53,10 +65,50 @@ public class RegionTaskStack implements IService {
 	 * @param num
 	 * @return get task by request number.
 	 */
-	public JSONObject lookupTask(String taskID) {
-		if (Assert.isEmptyString(taskID) == false) {
+	public MSUTask findMSUTask(String taskID) {
+		if (Assert.isEmptyString(taskID) == true) {
 			return null;
 		}
 		return this._regionTaskMap.get(taskID);
+	}
+
+	/**
+	 * remove task
+	 * 
+	 * @param taskID
+	 * @return
+	 */
+	public MSUTask removeMUSTask(String taskID) {
+		if (Assert.isEmptyString(taskID) == true) {
+			return null;
+		}
+		synchronized (_regionTaskMap) {
+			return this._regionTaskMap.remove(taskID);
+		}
+	}
+
+	/**
+	 * update a task
+	 * 
+	 * @param taskID
+	 * @return
+	 */
+	public MSUTask updateMUSTask(String taskID, MSUTask msuTask) {
+		if (Assert.isEmptyString(taskID) == true || msuTask == null) {
+			return null;
+		}
+		synchronized (_regionTaskMap) {
+			this._regionTaskMap.put(taskID, msuTask);
+		}
+		return msuTask;
+	}
+
+	/**
+	 * report the stack size.
+	 * 
+	 * @return
+	 */
+	public int reportStackSize() {
+		return this._regionTaskMap.size();
 	}
 }
