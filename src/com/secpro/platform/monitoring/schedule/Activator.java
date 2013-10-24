@@ -6,7 +6,7 @@ import org.osgi.framework.Version;
 
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.log.utils.PlatformLogger;
-import com.secpro.platform.monitoring.schedule.services.TaskScheduleCoreService;
+import com.secpro.platform.monitoring.schedule.services.ScheduleCoreService;
 
 /**
  * @author baiyanwei Oct 17, 2013
@@ -56,7 +56,7 @@ public class Activator implements BundleActivator {
 	 */
 	private void registerServices() throws Exception {
 		// The task schedule core service.
-		ServiceHelper.registerService(new TaskScheduleCoreService());
+		ServiceHelper.registerService(new ScheduleCoreService());
 		//
 	}
 }
