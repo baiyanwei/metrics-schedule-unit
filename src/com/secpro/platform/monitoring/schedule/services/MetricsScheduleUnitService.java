@@ -2,7 +2,7 @@ package com.secpro.platform.monitoring.schedule.services;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -11,22 +11,24 @@ import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
 import com.secpro.platform.core.metrics.Metric;
 import com.secpro.platform.core.services.IService;
+import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.Activator;
+import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
 import com.secpro.platform.monitoring.schedule.services.taskunit.RegionTaskStack;
+import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
 /**
  * @author baiyanwei Jul 6, 2013
  * 
  */
-@ServiceInfo(description = "The main service of Metrics-Collect-Agent", configurationPath = "msu/services/TaskScheduleCoreService/")
+@ServiceInfo(description = "The main service of Metrics-Schedule-Service", configurationPath = "/app/msu/services/MetricsScheduleUnitService/")
 public class MetricsScheduleUnitService extends AbstractMetricMBean implements IService, DynamicMBean {
 
 	//
@@ -43,15 +45,19 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	//
 	@XmlElement(name = "isFetchCacheTaskOnError", type = Boolean.class, defaultValue = "true")
 	public Boolean _isFetchCacheTaskOnError = new Boolean(true);
-
-	private HashMap<String, RegionTaskStack> _regionTaskStackMap = new HashMap<String, RegionTaskStack>();
+	private HashMap<String, String[]> _regionNameMap = new HashMap<String, String[]>();
+	private ScheduleCoreService _scheduleCoreService = null;
+	private TaskCoreService _taskCoreService = null;
 
 	@Override
 	public void start() throws PlatformException {
 		// register itself as dynamic bean
 		this.registerMBean(_jmxObjectName, this);
 		//
-		initOperationData();
+		initRegionInfor();
+		//
+		initTaskInfor();
+		//
 		// theLogger.info("startUp", _workflowThreshold.intValue(),
 		// _fetchTSSTaskInterval, _operationCapabilities);
 	}
@@ -62,82 +68,65 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		this.unRegisterMBean(_jmxObjectName);
 	}
 
-	/**
-	 * ready the location and operation from the database.
-	 */
-	private void initOperationData() {
-		// #1 read the task records from database
-		List<String[]> dataArrays = new ArrayList<String[]>();
-		// #2 group the task record by region and operation.
-		HashMap<String, HashMap<String, ArrayList<String[]>>> regionGroupDateMap = groupTaskRecordByRegionOperation(dataArrays);
-		// #3
-		synchronized (_regionTaskStackMap) {
-			HashMap<String, ArrayList<String[]>> regionOperationMap = null;
-			String operationKey = null;
-			ArrayList<String[]> taskRowList = null;
-			for (Iterator<String> regionIter = regionGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
-				//
-				RegionTaskStack regionStack = new RegionTaskStack();
-				try {
-					regionStack.start();
-				} catch (Exception e1) {
-					e1.printStackTrace();
-					continue;
-				}
-				regionStack._region = regionIter.next();
-				regionOperationMap = regionGroupDateMap.get(regionStack._region);
-				for (Iterator<String> operationIter = regionOperationMap.keySet().iterator(); operationIter.hasNext();) {
-					operationKey = operationIter.next();
-					taskRowList = regionOperationMap.get(operationKey);
-					try {
-						regionStack.putTasks(operationKey, analyesTaskContent(taskRowList));
-					} catch (Exception e) {
-						e.printStackTrace();
-						continue;
-					}
-				}
-			}
-		}
-
-	}
-
-	private HashMap<String, HashMap<String, ArrayList<String[]>>> groupTaskRecordByRegionOperation(List<String[]> dataArrays) {
-		HashMap<String, HashMap<String, ArrayList<String[]>>> regionDateMap = new HashMap<String, HashMap<String, ArrayList<String[]>>>();
-		String[] rowDatas = null;
-		for (int i = 0; i < dataArrays.size(); i++) {
-			try {
-				rowDatas = dataArrays.get(i);
-				if (regionDateMap.containsKey(rowDatas[0]) == false) {
-					HashMap<String, ArrayList<String[]>> operationRowDataMap = new HashMap<String, ArrayList<String[]>>();
-					ArrayList<String[]> operationRowList = new ArrayList<String[]>();
-					operationRowList.add(rowDatas);
-					operationRowDataMap.put(rowDatas[1], operationRowList);
-					regionDateMap.put(rowDatas[0], operationRowDataMap);
-				} else {
-					HashMap<String, ArrayList<String[]>> operationRowDataMap = regionDateMap.get(rowDatas[0]);
-					if (operationRowDataMap.containsKey(rowDatas[1]) == false) {
-						ArrayList<String[]> operationRowList = new ArrayList<String[]>();
-						operationRowList.add(rowDatas);
-					} else {
-						ArrayList<String[]> operationRowList = operationRowDataMap.get(rowDatas[1]);
-						operationRowList.add(rowDatas);
-						operationRowDataMap.put(rowDatas[1], operationRowList);
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-				continue;
-			}
-		}
-		return regionDateMap;
-	}
-
-	private ArrayList<JSONObject> analyesTaskContent(ArrayList<String[]> taskContentList) {
-		return null;
-	}
-
 	public JSONArray fetchTaskByRequest(String region, String operatons, String num) {
 		return null;
+	}
+
+	/**
+	 * read the region information
+	 */
+	private void initRegionInfor() {
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
+			return;
+		}
+		//
+		String sql = "SELECT CITY_NAME,CITY_CODE,CITY_LEVEL,PARENT_CODE FROM SYS_CITY";
+		Object[][] resultData = dataBaseStorageAdapter.selectRecords(sql);
+		if (resultData == null || resultData.length == 0) {
+			return;
+		}
+		// {{CITY_NAME,CITY_CODE,CITY_LEVEL,PARENT_CODE},}
+		for (int i = 0; i < resultData.length; i++) {
+			this._regionNameMap.put((String) resultData[i][0], new String[] { (String) resultData[i][0], (String) resultData[i][1], (String) resultData[i][2],
+					(String) resultData[i][3] });
+		}
+	}
+
+	private void initTaskInfor() {
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
+			return;
+		}
+		//
+		String sql = "SELECT CITY_NAME,CITY_CODE,CITY_LEVEL,PARENT_CODE FROM SYS_CITY";
+		Object[][] resultData = dataBaseStorageAdapter.selectRecords(sql);
+		if (resultData == null || resultData.length == 0) {
+			return;
+		}
+		// {{CITY_NAME,CITY_CODE,CITY_LEVEL,PARENT_CODE},}
+		for (int i = 0; i < resultData.length; i++) {
+			this._regionNameMap.put((String) resultData[i][0], new String[] { (String) resultData[i][0], (String) resultData[i][1], (String) resultData[i][2],
+					(String) resultData[i][3] });
+		}
+	}
+
+	public void buildScheduleOnTime() {
+		HashMap<String, RegionTaskStack> regionTaskStackMap = _taskCoreService.getRegionTaskStackMap();
+		String region = null;
+		RegionTaskStack stack = null;
+		Date currentPoint = new Date();
+		for (Iterator<String> regionIter = regionTaskStackMap.keySet().iterator(); regionIter.hasNext();) {
+			region = regionIter.next();
+			stack = regionTaskStackMap.get(region);
+			HashMap<String, List<MSUSchedule>> scheduleMap = stack.nextHourSchedule(currentPoint);
+			for (Iterator<String> operationIter = scheduleMap.keySet().iterator(); operationIter.hasNext();) {
+				String operation = operationIter.next();
+				List<MSUSchedule> scheduleList = scheduleMap.get(operation);
+				_scheduleCoreService.putMSUSchedules(region, operation, scheduleList);
+			}
+		}
+
 	}
 
 	//

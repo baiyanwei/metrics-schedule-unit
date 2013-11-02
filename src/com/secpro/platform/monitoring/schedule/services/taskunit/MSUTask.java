@@ -1,30 +1,34 @@
 package com.secpro.platform.monitoring.schedule.services.taskunit;
 
-
 /**
- * @author baiyanwei
- * Oct 24, 2013
- *
+ * @author baiyanwei Oct 24, 2013
  * 
- * Task bean
+ * 
+ *         Task bean
  */
 public class MSUTask {
+
 	public String _id = "";
 	public String _region = "";
 	public String _operation = "";
 	public String _schedule = "";
 	public long _createAt = 0;
 	public String _metaData = null;
+	public String _content = null;
+	public long _resID = 0;
 	public boolean _isRealtime = false;
 
-	public MSUTask(String iD, String region, String operation, String schedule, long createAt, String metaData) {
+	public MSUTask(String id, String region, String operation, String schedule, long createAt, String metaData, String content, long resID, boolean isRealtime) {
 		super();
-		_id = iD;
+		this._id = id;
 		this._region = region;
 		this._operation = operation;
 		this._schedule = schedule;
 		this._createAt = createAt;
 		this._metaData = metaData;
+		this._content = content;
+		this._resID = resID;
+		this._isRealtime = isRealtime;
 	}
 
 	public String getID() {
@@ -81,6 +85,22 @@ public class MSUTask {
 
 	public void setRealtime(boolean isRealtime) {
 		this._isRealtime = isRealtime;
+	}
+
+	public String getContent() {
+		return _content;
+	}
+
+	public void setContent(String content) {
+		this._content = content;
+	}
+
+	public long getResID() {
+		return _resID;
+	}
+
+	public void setResID(long resID) {
+		this._resID = resID;
 	}
 
 }

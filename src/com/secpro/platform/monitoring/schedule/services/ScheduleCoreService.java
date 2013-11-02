@@ -144,7 +144,11 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 		for (int i = 0; i < scheduleContentList.size(); i++) {
 			try {
 				rowData = scheduleContentList.get(i);
-				msuScheduleList.add(new MSUSchedule(System.currentTimeMillis(), rowData[1]));
+				// String taskID, String scheduleID, long schedulePoint, long
+				// createAt, String region, String operation, long fetchAt, long
+				// executeAt, long executeCost,
+				// long executeStatus, String executeDescription
+				msuScheduleList.add(new MSUSchedule(rowData[0], rowData[1], 0, 0, rowData[4], rowData[5], 0, 0, 0, 0, rowData[10]));
 			} catch (Exception e) {
 				theLogger.exception(e);
 				continue;
@@ -164,8 +168,9 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operation) == true || Assert.isEmptyString(taskID) == true) {
 			return new ArrayList<MSUSchedule>();
 		}
-		return this._regionScheduleStackMap.get(region).findSchedules(operation,taskID);
+		return this._regionScheduleStackMap.get(region).findSchedules(operation, taskID);
 	}
+
 	/**
 	 * get Task Content by ID
 	 * 
@@ -173,31 +178,32 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	 * @param taskID
 	 * @return
 	 */
-	public HashMap<String,List<MSUSchedule>> getMSUSchedules(String region, String taskID) {
+	public HashMap<String, List<MSUSchedule>> getMSUSchedules(String region, String taskID) {
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
-			return new HashMap<String,List<MSUSchedule>>();
+			return new HashMap<String, List<MSUSchedule>>();
 		}
 
 		return this._regionScheduleStackMap.get(region).findSchedules(taskID);
 	}
+
 	/**
 	 * put or insert a MSU task into region.
 	 * 
 	 * @param msuTask
 	 * @return
 	 */
-	public MSUSchedule putMSUSchedule(MSUSchedule msuSchedule) {
+	public void putMSUSchedule(MSUSchedule msuSchedule) {
 		if (msuSchedule == null) {
-			return null;
+			return;
 		}
-		try {
-			// return
-			// this._regionScheduleStackMap.get(msuTask._region).putMSUSchedule(msuTask);
-			return null;
-		} catch (Exception e) {
-			theLogger.exception(e);
-			return null;
+		this._regionScheduleStackMap.get(msuSchedule.getRegion()).putScheduleToBottom(msuSchedule.getOperation(), msuSchedule, false);
+	}
+
+	public void putMSUSchedules(String region, String operation, List<MSUSchedule> msuScheduleList) {
+		if (Assert.isEmptyCollection(msuScheduleList) == true || Assert.isEmptyString(region) == true || Assert.isEmptyString(operation) == true) {
+			return;
 		}
+		this._regionScheduleStackMap.get(region).putSchedules(operation, msuScheduleList, false);
 	}
 
 	/**

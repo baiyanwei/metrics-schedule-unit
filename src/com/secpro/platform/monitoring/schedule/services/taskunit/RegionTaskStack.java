@@ -1,10 +1,18 @@
 package com.secpro.platform.monitoring.schedule.services.taskunit;
 
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+
+import org.quartz.CronExpression;
 
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.utils.Assert;
+import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
+import com.secpro.platform.monitoring.schedule.task.TaskConstant;
 
 /**
  * @author baiyanwei Oct 17, 2013
@@ -110,5 +118,42 @@ public class RegionTaskStack implements IService {
 	 */
 	public int reportStackSize() {
 		return this._regionTaskMap.size();
+	}
+
+	public HashMap<String, List<MSUSchedule>> nextHourSchedule(Date currentPoint) {
+		String taskID = null;
+		MSUTask taskObj = null;
+		long currentTime = currentPoint.getTime();
+		HashMap<String, List<MSUSchedule>> scheduleMap = new HashMap<String, List<MSUSchedule>>();
+		for (Iterator<String> taskIter = _regionTaskMap.keySet().iterator(); taskIter.hasNext();) {
+			taskID = taskIter.next();
+			taskObj = _regionTaskMap.get(taskID);
+			try {
+				CronExpression cron = new CronExpression(taskObj.getSchedule());
+				long nextPoint = cron.getNextValidTimeAfter(currentPoint).getTime();
+				long flowTime = currentTime - nextPoint;
+				// 1 hour.
+				if (flowTime >= 0 && flowTime > 3600000L) {
+					continue;
+				}
+				if (scheduleMap.containsKey(taskObj.getOperation()) == false) {
+					List<MSUSchedule> scheduleList = new ArrayList<MSUSchedule>();
+					scheduleList.add(createScheduleOnTime(taskObj, nextPoint, currentTime));
+					scheduleMap.put(taskObj.getOperation(), scheduleList);
+				} else {
+					List<MSUSchedule> scheduleList = scheduleMap.get(taskObj.getOperation());
+					scheduleList.add(createScheduleOnTime(taskObj, nextPoint, currentTime));
+				}
+			} catch (ParseException e) {
+				e.printStackTrace();
+				continue;
+			}
+		}
+		return scheduleMap;
+	}
+
+	private MSUSchedule createScheduleOnTime(MSUTask taskObj, long schedulePoint, long createAt) {
+		//String taskID, String scheduleID, long schedulePoint, String region, String operation, long createAt)
+		return new MSUSchedule(taskObj.getID(),TaskConstant.getMSUScheduleID(taskObj,schedulePoint,createAt),schedulePoint, taskObj.getRegion(), taskObj.getOperation(),createAt);
 	}
 }

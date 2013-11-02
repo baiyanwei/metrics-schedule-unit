@@ -138,7 +138,8 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 		for (int i = 0; i < taskContentList.size(); i++) {
 			try {
 				rowData = taskContentList.get(i);
-				musTask = new MSUTask(rowData[0], rowData[1], rowData[2], rowData[3], Long.parseLong(rowData[4]), rowData[5]);
+				//String id, String region, String operation, String schedule, long createAt, String metaData, String content, long resID, boolean isRealtime
+				musTask = new MSUTask(rowData[0], rowData[1], rowData[2], rowData[3], Long.parseLong(rowData[4]), rowData[5],rowData[6],Long.parseLong(rowData[7]),false);
 				musTask.setRealtime(false);
 				msuTaskList.add(musTask);
 			} catch (Exception e) {
@@ -232,6 +233,10 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 			return null;
 		}
 		return this._regionTaskStackMap.get(region).updateMUSTask(taskID, msuTask);
+	}
+
+	public HashMap<String, RegionTaskStack> getRegionTaskStackMap() {
+		return this._regionTaskStackMap;
 	}
 
 	//
