@@ -56,6 +56,9 @@ public class MSUSchedule {
 		this._createAt = createAt;
 	}
 
+	public MSUSchedule() {
+	}
+
 	public String getTaskID() {
 		return _taskID;
 	}

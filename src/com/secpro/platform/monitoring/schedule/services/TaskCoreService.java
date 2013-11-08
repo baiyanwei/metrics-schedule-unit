@@ -12,11 +12,13 @@ import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
 import com.secpro.platform.core.metrics.Metric;
 import com.secpro.platform.core.services.IService;
+import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.services.taskunit.MSUTask;
 import com.secpro.platform.monitoring.schedule.services.taskunit.RegionTaskStack;
+import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
 /**
  * @author baiyanwei Jul 6, 2013
@@ -40,9 +42,9 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 		// register itself as dynamic bean
 		this.registerMBean(_jmxObjectName, this);
 		//
-		initOperationData();
-		// theLogger.info("startUp", _workflowThreshold.intValue(),
-		// _fetchTSSTaskInterval, _operationCapabilities);
+		initRegionTaskData();
+		//
+		theLogger.info("startUp");
 	}
 
 	@Override
@@ -54,17 +56,21 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	/**
 	 * ready the location and operation from the database.
 	 */
-	private void initOperationData() {
+	private void initRegionTaskData() {
 		// #1 read the task records from database
-		List<String[]> dataArrays = getTaskRecordsFromDataBase();
-		if (dataArrays == null || dataArrays.size() == 0) {
+		List<MSUTask> regionTaskList = getRegionTaskFromDataBase();
+		if (Assert.isEmptyCollection(regionTaskList) == true) {
 			theLogger.warn("NoTaskRcoreds");
+			return;
 		}
 		// #2 group the task record by region and operation.
-		HashMap<String, ArrayList<String[]>> regionGroupDateMap = groupTaskRecordByRegion(dataArrays);
+		HashMap<String, ArrayList<MSUTask>> regionTaskGroupDateMap = groupTaskByRegion(regionTaskList);
+		if (Assert.isEmptyMap(regionTaskGroupDateMap) == true) {
+			return;
+		}
 		// #3
 		synchronized (_regionTaskStackMap) {
-			for (Iterator<String> regionIter = regionGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
+			for (Iterator<String> regionIter = regionTaskGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
 				//
 				RegionTaskStack regionStack = new RegionTaskStack();
 				try {
@@ -73,9 +79,12 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 					e1.printStackTrace();
 					continue;
 				}
+				//
 				regionStack._region = regionIter.next();
+				_regionTaskStackMap.put(regionStack._region, regionStack);
+				//
 				try {
-					regionStack.putTasks(buildMSUTaskByRecord(regionGroupDateMap.get(regionStack._region)));
+					regionStack.putTasks(regionTaskGroupDateMap.get(regionStack._region));
 				} catch (Exception e) {
 					theLogger.exception(e);
 					continue;
@@ -91,27 +100,28 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param dataArrays
 	 * @return
 	 */
-	private HashMap<String, ArrayList<String[]>> groupTaskRecordByRegion(List<String[]> dataArrays) {
-		HashMap<String, ArrayList<String[]>> regionDateMap = new HashMap<String, ArrayList<String[]>>();
-		String[] rowDatas = null;
-		// [0] region.
-		for (int i = 0; i < dataArrays.size(); i++) {
+	private HashMap<String, ArrayList<MSUTask>> groupTaskByRegion(List<MSUTask> regionTaskDataList) {
+		//
+		HashMap<String, ArrayList<MSUTask>> regionGroupMap = new HashMap<String, ArrayList<MSUTask>>();
+		//
+		MSUTask msuTask = null;
+		for (int i = 0; i < regionTaskDataList.size(); i++) {
 			try {
-				rowDatas = dataArrays.get(i);
-				if (regionDateMap.containsKey(rowDatas[0]) == false) {
-					ArrayList<String[]> operationRowList = new ArrayList<String[]>();
-					operationRowList.add(rowDatas);
-					regionDateMap.put(rowDatas[0], operationRowList);
+				msuTask = regionTaskDataList.get(i);
+				if (regionGroupMap.containsKey(msuTask.getRegion()) == false) {
+					ArrayList<MSUTask> taskRowList = new ArrayList<MSUTask>();
+					taskRowList.add(msuTask);
+					regionGroupMap.put(msuTask.getRegion(), taskRowList);
 				} else {
-					ArrayList<String[]> operationRowList = regionDateMap.get(rowDatas[0]);
-					operationRowList.add(rowDatas);
+					ArrayList<MSUTask> taskRowList = regionGroupMap.get(msuTask.getRegion());
+					taskRowList.add(msuTask);
 				}
 			} catch (Exception e) {
 				theLogger.exception(e);
 				continue;
 			}
 		}
-		return regionDateMap;
+		return regionGroupMap;
 	}
 
 	/**
@@ -119,35 +129,12 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * 
 	 * @return
 	 */
-	private List<String[]> getTaskRecordsFromDataBase() {
-		// TODO Auto-generated method stub
-		return new ArrayList<String[]>();
-	}
-
-	/**
-	 * @param taskContentList
-	 * @return
-	 */
-	private ArrayList<MSUTask> buildMSUTaskByRecord(ArrayList<String[]> taskContentList) {
-		if (Assert.isEmptyCollection(taskContentList) == true) {
+	private List<MSUTask> getRegionTaskFromDataBase() {
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
 			return new ArrayList<MSUTask>();
 		}
-		ArrayList<MSUTask> msuTaskList = new ArrayList<MSUTask>();
-		String[] rowData = null;
-		MSUTask musTask = null;
-		for (int i = 0; i < taskContentList.size(); i++) {
-			try {
-				rowData = taskContentList.get(i);
-				//String id, String region, String operation, String schedule, long createAt, String metaData, String content, long resID, boolean isRealtime
-				musTask = new MSUTask(rowData[0], rowData[1], rowData[2], rowData[3], Long.parseLong(rowData[4]), rowData[5],rowData[6],Long.parseLong(rowData[7]),false);
-				musTask.setRealtime(false);
-				msuTaskList.add(musTask);
-			} catch (Exception e) {
-				theLogger.exception(e);
-				continue;
-			}
-		}
-		return msuTaskList;
+		return dataBaseStorageAdapter.queryAllFrequencyTask();
 	}
 
 	/**

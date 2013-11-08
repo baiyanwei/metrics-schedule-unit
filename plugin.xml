@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="com.secpro.platform.api.pf_api_server">
+      <server
+            description="The task schedule interface."
+            id="metrics-schedule-unit.taskScheduleAPI"
+            implement_class="com.secpro.platform.monitoring.schedule.bri.AgentTaskBeaconInterface"
+            name="metrics-schedule-unit.taskScheduleAPI">
+         <property
+               name="port"
+               value="8900">
+         </property>
+         <handler
+               id="metrics-schedule-unit.msu_task_fetch"
+               implement_class="com.secpro.platform.monitoring.schedule.bri.taskbeacon.AgentTaskBeaconHttpRequstHandler"
+               name="metrics-schedule-unit.msu_task_fetch">
+            <property
+                  name="path"
+                  value="/msu/task/fetch">
+            </property>
+         </handler>
+      </server>
+      <server
+            description="SYSLOG standard rule Interface for MCA"
+            id="metrics-schedule-unit.syslogRuleAPI"
+            implement_class="com.secpro.platform.monitoring.schedule.bri.SyslogRuleBeaconInterface"
+            name="metrics-schedule-unit.syslogRuleAPI">
+         <property
+               name="port"
+               value="8901">
+         </property>
+         <handler
+               id="metrics-schedule-unit.msu_samples_fetch"
+               implement_class="com.secpro.platform.monitoring.schedule.bri.syslogrulebeacon.SyslogRuleBeaconHttpRequstHandler"
+               name="metrics-schedule-unit.msu_samples_fetch">
+            <property
+                  name="path"
+                  value="/msu/syslog/standard/fetch">
+            </property>
+         </handler>
+      </server>
+   </extension>
+
+</plugin>

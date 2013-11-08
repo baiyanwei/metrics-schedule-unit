@@ -6,7 +6,7 @@ import org.osgi.framework.Version;
 
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.log.utils.PlatformLogger;
-import com.secpro.platform.monitoring.schedule.services.ScheduleCoreService;
+import com.secpro.platform.monitoring.schedule.services.MetricsScheduleUnitService;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
 /**
@@ -56,9 +56,10 @@ public class Activator implements BundleActivator {
 	 *             register MSU all services.
 	 */
 	private void registerServices() throws Exception {
+		// The database connection service.
 		ServiceHelper.registerService(new DataBaseStorageAdapter());
 		// The task schedule core service.
-		ServiceHelper.registerService(new ScheduleCoreService());
+		ServiceHelper.registerService(new MetricsScheduleUnitService());
 		//
 	}
 }

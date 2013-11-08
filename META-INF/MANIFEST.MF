@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Metrics-schedule-unit
-Bundle-SymbolicName: metrics-schedule-unit
+Bundle-SymbolicName: metrics-schedule-unit;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.secpro.platform.monitoring.schedule.Activator
 Bundle-Vendor: secpro
@@ -13,4 +13,5 @@ Require-Bundle: org.eclipse.core.runtime,
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
 Import-Package: com.secpro.platform.storage.services,
+ org.jboss.netty.handler.codec.http;version="3.7.0.Final",
  org.json

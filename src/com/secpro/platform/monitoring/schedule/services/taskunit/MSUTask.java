@@ -31,6 +31,10 @@ public class MSUTask {
 		this._isRealtime = isRealtime;
 	}
 
+	public MSUTask() {
+		// TODO Auto-generated constructor stub
+	}
+
 	public String getID() {
 		return _id;
 	}

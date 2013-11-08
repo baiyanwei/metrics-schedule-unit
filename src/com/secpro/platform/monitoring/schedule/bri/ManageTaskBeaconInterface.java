@@ -16,7 +16,7 @@ public class ManageTaskBeaconInterface extends HttpServer {
 	 * @param taskObj
 	 * @return
 	 */
-	public String AddTask(Object taskObj) {
+	public String AddTask(String taskObj) {
 		return "";
 	}
 
