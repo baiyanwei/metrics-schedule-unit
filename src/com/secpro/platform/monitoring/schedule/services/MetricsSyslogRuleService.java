@@ -1,57 +1,42 @@
 package com.secpro.platform.monitoring.schedule.services;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.text.MessageFormat;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Timer;
 
 import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
-import org.json.JSONArray;
-
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
-import com.secpro.platform.core.metrics.Metric;
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.core.utils.Assert;
-import com.secpro.platform.core.utils.Utils;
 import com.secpro.platform.log.utils.PlatformLogger;
-import com.secpro.platform.monitoring.schedule.Activator;
-import com.secpro.platform.monitoring.schedule.action.ScheduleAction;
-import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
-import com.secpro.platform.monitoring.schedule.services.scheduleunit.RegionScheduleStack;
-import com.secpro.platform.monitoring.schedule.services.taskunit.MSUTask;
+import com.secpro.platform.monitoring.schedule.action.SysLogStandardRulePublishAction;
+import com.secpro.platform.monitoring.schedule.services.syslogruleunit.MSUSysLogStandardRule;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
 /**
  * @author baiyanwei Jul 6, 2013
  * 
- *         In this unit, We define the task , make the schedule. Task is content
- *         about What task is , Where Task will be executed,What time task will
- *         be fetch. Here have two type of task. one is frequency task ,other is
- *         realTime task. RealTime will be fetched and executed at first. One
- *         task map many schedule on different time point. Task is created by
- *         system management.And the schedule is created by schedule property in
- *         task content. Create schedule on every hour.it is hourly. The all
- *         task and schedule content will be stored in task with starting name
- *         "MSU_"
+ *         The SYSLOG standard rule service will work on rule publish into each
+ *         MCA, keep the rule cache in memory.
+ * 
  */
-@ServiceInfo(description = "The main service of Metrics-Schedule-Service", configurationPath = "/app/msu/services/MetricsScheduleUnitService/")
+@ServiceInfo(description = "Syslog standard rule service", configurationPath = "/app/msu/services/MetricsSyslogRuleService/")
 public class MetricsSyslogRuleService extends AbstractMetricMBean implements IService, DynamicMBean {
 	//
-	final private static PlatformLogger theLogger = PlatformLogger.getLogger(TaskCoreService.class);
+	final private static PlatformLogger theLogger = PlatformLogger.getLogger(MetricsSyslogRuleService.class);
 	//
-	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=ScheduleCoreService")
-	public String _jmxObjectName = "secpro.msu:type=ScheduleCoreService";
+	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=MetricsSyslogRuleService")
+	public String _jmxObjectName = "secpro.msu:type=MetricsSyslogRuleService";
 	//
-	private HashMap<String, String> _syslogStandardRuleMap = new HashMap<String, String>();
+	private HashMap<String, URI> _mcaPublishReferentMap = new HashMap<String, URI>();
+	private HashMap<String, MSUSysLogStandardRule> _syslogStandardRuleMap = new HashMap<String, MSUSysLogStandardRule>();
 
 	@Override
 	public void start() throws PlatformException {
@@ -73,87 +58,18 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * ready the location and operation from the database.
 	 */
 	private void initSyslogStandardRuleData() {
-		/*
-		// #1 read the task records from database
-		List<MSUSchedule> unfetchScheduleList = getScheduleRecordsFromDataBase();
+		// #1 read DB record.
+		List<MSUSysLogStandardRule> unfetchScheduleList = getSyslogRuleRecordsFromDataBase();
 		if (Assert.isEmptyCollection(unfetchScheduleList) == true) {
 			return;
 		}
-		// #2 group the task record by region and operation.
-		HashMap<String, HashMap<String, ArrayList<MSUSchedule>>> regionGroupDateMap = groupScheduleRecordByRegionOperation(unfetchScheduleList);
-		if (Assert.isEmptyMap(regionGroupDateMap) == true) {
-			return;
-		}
-		// #3
-		synchronized (_syslogStandardRuleMap) {
-			HashMap<String, ArrayList<MSUSchedule>> regionOperationMap = null;
-			String operationKey = null;
-			for (Iterator<String> regionIter = regionGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
-				//
-				RegionScheduleStack regionScheduleStack = new RegionScheduleStack();
-				try {
-					regionScheduleStack.start();
-				} catch (Exception e1) {
-					theLogger.exception(e1);
-					continue;
-				}
-				regionScheduleStack._region = regionIter.next();
-				//
-				_syslogStandardRuleMap.put(regionScheduleStack._region, regionScheduleStack);
-				//
-				regionOperationMap = regionGroupDateMap.get(regionScheduleStack._region);
-				//
-				for (Iterator<String> operationIter = regionOperationMap.keySet().iterator(); operationIter.hasNext();) {
-					operationKey = operationIter.next();
-					try {
-						regionScheduleStack.putSchedules(operationKey, regionOperationMap.get(operationKey), false);
-					} catch (Exception e) {
-						theLogger.exception(e);
-						continue;
-					}
-				}
+		// #2 group into cache.
+		synchronized (this._syslogStandardRuleMap) {
+			for (int i = 0; i < unfetchScheduleList.size(); i++) {
+				this._syslogStandardRuleMap.put(unfetchScheduleList.get(i).getRuleID(), unfetchScheduleList.get(i));
 			}
 		}
-*/
-	}
 
-	/**
-	 * group the schedule by region operation.
-	 * 
-	 * @param unfetchScheduleList
-	 * @return
-	 */
-	private HashMap<String, HashMap<String, ArrayList<MSUSchedule>>> groupScheduleRecordByRegionOperation(List<MSUSchedule> unfetchScheduleList) {
-		
-		HashMap<String, HashMap<String, ArrayList<MSUSchedule>>> regionScheduleMap = new HashMap<String, HashMap<String, ArrayList<MSUSchedule>>>();
-		MSUSchedule unfetchSchedule = null;
-		// group the schedule.
-		for (int i = 0; i < unfetchScheduleList.size(); i++) {
-			try {
-				unfetchSchedule = unfetchScheduleList.get(i);
-				if (regionScheduleMap.containsKey(unfetchSchedule.getRegion()) == false) {
-					HashMap<String, ArrayList<MSUSchedule>> operationScheduleMap = new HashMap<String, ArrayList<MSUSchedule>>();
-					ArrayList<MSUSchedule> operationScheduleList = new ArrayList<MSUSchedule>();
-					operationScheduleList.add(unfetchSchedule);
-					operationScheduleMap.put(unfetchSchedule.getOperation(), operationScheduleList);
-					regionScheduleMap.put(unfetchSchedule.getRegion(), operationScheduleMap);
-				} else {
-					HashMap<String, ArrayList<MSUSchedule>> operationScheduleMap = regionScheduleMap.get(unfetchSchedule.getRegion());
-					if (operationScheduleMap.containsKey(unfetchSchedule.getOperation()) == false) {
-						ArrayList<MSUSchedule> operationScheduleList = new ArrayList<MSUSchedule>();
-						operationScheduleList.add(unfetchSchedule);
-					} else {
-						ArrayList<MSUSchedule> operationScheduleList = operationScheduleMap.get(unfetchSchedule.getOperation());
-						operationScheduleList.add(unfetchSchedule);
-						operationScheduleMap.put(unfetchSchedule.getOperation(), operationScheduleList);
-					}
-				}
-			} catch (Exception e) {
-				theLogger.exception(e);
-				continue;
-			}
-		}
-		return regionScheduleMap;
 	}
 
 	/**
@@ -161,16 +77,95 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * 
 	 * @return
 	 */
-	private List<MSUSchedule> getScheduleRecordsFromDataBase() {
+	private List<MSUSysLogStandardRule> getSyslogRuleRecordsFromDataBase() {
 		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
 		if (dataBaseStorageAdapter == null) {
-			return new ArrayList<MSUSchedule>();
+			return new ArrayList<MSUSysLogStandardRule>();
 		}
-		return dataBaseStorageAdapter.querySchedulesNofetching(0, System.currentTimeMillis());
+		return dataBaseStorageAdapter.querySysLogStandardRule();
 	}
 
-	public String fetchScheduleByRequest(String region, String mca, String pushPath) {
-		// TODO Auto-generated method stub
-		return null;
+	/**
+	 * fetch the SYSLOG standard rule from MCA.
+	 * 
+	 * @param region
+	 * @param mca
+	 * @param pushPath
+	 * @return
+	 */
+	public String fetchSyslogStandardRuleByRequest(String mcaName, URI pushPath) {
+		if (Assert.isEmptyString(mcaName) == true || pushPath == null) {
+			return null;
+		}
+		synchronized (this._mcaPublishReferentMap) {
+			this._mcaPublishReferentMap.put(mcaName, pushPath);
+		}
+		return getSysLogStandardRules();
 	}
+
+	/**
+	 * publish a new standard rule to all MCAs
+	 * 
+	 * @param id
+	 * @param content
+	 */
+	public void publishSysLogStandardRule(MSUSysLogStandardRule newRule) {
+		if (newRule == null || Assert.isEmptyString(newRule.getRuleID()) == true) {
+			return;
+		}
+		synchronized (this._syslogStandardRuleMap) {
+			this._syslogStandardRuleMap.put(newRule.getRuleID(), newRule);
+		}
+		for (Iterator<String> keyIter = this._mcaPublishReferentMap.keySet().iterator(); keyIter.hasNext();) {
+			try {
+				publishSysLogStandardRuleToMCA(newRule.getContent(), this._mcaPublishReferentMap.get(keyIter.next()));
+			} catch (Exception e) {
+				theLogger.exception(e);
+				continue;
+			}
+		}
+
+	}
+
+	/**
+	 * publish a new standard rule to all MCAs
+	 * 
+	 * @param id
+	 * @param content
+	 */
+	public void removeSysLogStandardRule(MSUSysLogStandardRule ruleObj) {
+		if (ruleObj == null || Assert.isEmptyString(ruleObj.getRuleID()) == true) {
+			return;
+		}
+		synchronized (this._syslogStandardRuleMap) {
+			this._syslogStandardRuleMap.remove(ruleObj.getRuleID());
+		}
+	}
+
+	/**
+	 * publish the rule to target.
+	 * 
+	 * @param content
+	 * @param publishPath
+	 * @throws Exception
+	 */
+	private void publishSysLogStandardRuleToMCA(String content, URI publishPath) throws Exception {
+		new SysLogStandardRulePublishAction(publishPath, content).start();
+	}
+
+	/**
+	 * get the SYSLOG rule content.
+	 * 
+	 * @return
+	 */
+	private String getSysLogStandardRules() {
+		StringBuffer rules = new StringBuffer();
+		String keyName = null;
+		for (Iterator<String> keyIter = this._syslogStandardRuleMap.keySet().iterator(); keyIter.hasNext();) {
+			keyName = keyIter.next();
+			rules.append(this._syslogStandardRuleMap.get(keyName));
+		}
+		return (rules.length() == 0 ? "" : rules.toString());
+	}
+
 }

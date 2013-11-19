@@ -71,19 +71,11 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 		// #3
 		synchronized (_regionTaskStackMap) {
 			for (Iterator<String> regionIter = regionTaskGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
-				//
-				RegionTaskStack regionStack = new RegionTaskStack();
 				try {
-					regionStack.start();
-				} catch (Exception e1) {
-					e1.printStackTrace();
-					continue;
-				}
-				//
-				regionStack._region = regionIter.next();
-				_regionTaskStackMap.put(regionStack._region, regionStack);
-				//
-				try {
+					RegionTaskStack regionStack = createTaskRegion(regionIter.next());
+					//
+					_regionTaskStackMap.put(regionStack._region, regionStack);
+					//
 					regionStack.putTasks(regionTaskGroupDateMap.get(regionStack._region));
 				} catch (Exception e) {
 					theLogger.exception(e);
@@ -138,6 +130,20 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	}
 
 	/**
+	 * create a task region instance.
+	 * 
+	 * @param region
+	 * @return
+	 * @throws Exception
+	 */
+	private RegionTaskStack createTaskRegion(String region) throws Exception {
+		RegionTaskStack regionStack = new RegionTaskStack();
+		regionStack._region = region;
+		regionStack.start();
+		return regionStack;
+	}
+
+	/**
 	 * get Task Content by ID
 	 * 
 	 * @param region
@@ -167,11 +173,18 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @return
 	 */
 	public MSUTask putMSUTask(MSUTask msuTask) {
-		if (msuTask == null || Assert.isEmptyString(msuTask._id) == true || Assert.isEmptyString(msuTask._region) == true) {
+		if (msuTask == null || Assert.isEmptyString(msuTask.getID()) == true || Assert.isEmptyString(msuTask.getRegion()) == true) {
 			return null;
 		}
 		try {
-			return this._regionTaskStackMap.get(msuTask._region).putMSUTask(msuTask);
+			if (_regionTaskStackMap.containsKey(msuTask.getRegion()) == false) {
+				RegionTaskStack regionStack = createTaskRegion(msuTask.getRegion());
+				synchronized (_regionTaskStackMap) {
+					_regionTaskStackMap.put(regionStack._region, regionStack);
+				}
+				return regionStack.putMSUTask(msuTask);
+			}
+			return this._regionTaskStackMap.get(msuTask.getRegion()).putMSUTask(msuTask);
 		} catch (Exception e) {
 			theLogger.exception(e);
 			return null;
@@ -200,11 +213,14 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param taskID
 	 * @return
 	 */
-	public MSUTask removeMSUTask(String region, String taskID) {
-		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
+	public MSUTask removeMSUTask(MSUTask task) {
+		if (task == null || Assert.isEmptyString(task.getRegion()) == true || Assert.isEmptyString(task.getID()) == true) {
 			return null;
 		}
-		return this._regionTaskStackMap.get(region).removeMUSTask(taskID);
+		if (this._regionTaskStackMap.containsKey(task.getRegion()) == false) {
+			return null;
+		}
+		return this._regionTaskStackMap.get(task.getRegion()).removeMUSTask(task.getID());
 	}
 
 	/**
@@ -215,11 +231,14 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param msuTask
 	 * @return
 	 */
-	public MSUTask updateMSUTask(String region, String taskID, MSUTask msuTask) {
-		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true || msuTask == null) {
+	public MSUTask updateMSUTask(MSUTask msuTask) {
+		if (msuTask == null) {
 			return null;
 		}
-		return this._regionTaskStackMap.get(region).updateMUSTask(taskID, msuTask);
+		if (this._regionTaskStackMap.containsKey(msuTask.getRegion()) == false) {
+			return null;
+		}
+		return this._regionTaskStackMap.get(msuTask.getRegion()).updateMUSTask(msuTask);
 	}
 
 	public HashMap<String, RegionTaskStack> getRegionTaskStackMap() {

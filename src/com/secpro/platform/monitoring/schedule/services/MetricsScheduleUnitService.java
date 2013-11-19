@@ -1,12 +1,20 @@
 package com.secpro.platform.monitoring.schedule.services;
 
+import it.sauronsoftware.base64.Base64;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.spec.X509EncodedKeySpec;
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 
+import javax.crypto.Cipher;
 import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
@@ -67,6 +75,9 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	private Timer _scheduleTimer = null;
 	private static HashMap<String, MessageFormat> messageFormatters = new HashMap<String, MessageFormat>();
 	private static String[] messageFiles = new String[] { "msu-task.js" };
+
+	// 最大加密明文大小
+	private static final int MAX_ENCRYPT_BLOCK = 117;
 
 	//
 	// We need to create the message formatters used in the workflow manager
@@ -158,7 +169,7 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	 * @param num
 	 * @return
 	 */
-	public String fetchScheduleByRequest(String region, String operations, int counter, String publicKey) throws Exception{
+	public String fetchScheduleByRequest(String region, String operations, int counter, String publicKey) throws Exception {
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operations) == true || Assert.isEmptyString(publicKey) == true || counter <= 0) {
 			new Exception("invalid parameter");
 		}
@@ -172,20 +183,79 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 			}
 			packageTaskArray.put(taskContent);
 		}
-
-		return encryptContent(packageTaskArray.toString(), publicKey);
+		if (Assert.isEmptyString(publicKey) == true) {
+			return packageTaskArray.toString();
+		} else {
+			return encryptContent(packageTaskArray.toString(), publicKey);
+		}
 	}
 
 	private String encryptContent(String content, String publicKey) {
-		return content;
+		byte[] contentByte = encryptByPublicKey(content.getBytes(), publicKey);
+		return new String(contentByte);
 	}
 
+	@SuppressWarnings("static-access")
 	private String packageMSUTaskContent(MSUTask msuTask, MSUSchedule msuSchedule) {
 		if (msuTask == null || msuSchedule == null) {
 			return null;
 		}
 		return messageFormatters.get("msu-task").format(msuTask.getID(), msuSchedule.getScheduleID(), msuTask.getRegion(), msuTask.getOperation(),
 				String.valueOf(msuTask.getCreateAt()), String.valueOf(msuSchedule.getSchedulePoint()), msuTask.getResID(), msuTask.getContent(), msuTask.getMetaData());
+	}
+
+	/**
+	 * 用公钥加密data
+	 * 
+	 * @param data
+	 * @param key
+	 * @return
+	 */
+	public byte[] encryptByPublicKey(byte[] data, String publicKey) {
+		if (Assert.isNull(data) == true || Assert.isEmptyString(publicKey) == true) {
+			return null;
+		}
+		// 对公钥解密
+		byte[] keyBytes = Base64.decode(publicKey.getBytes());
+		// 取得公钥
+		X509EncodedKeySpec x509KeySpec = new X509EncodedKeySpec(keyBytes);
+		KeyFactory keyFactory = null;
+		byte[] encryptedData = null;
+		ByteArrayOutputStream out = null;
+		try {
+			keyFactory = KeyFactory.getInstance("RSA");
+			Key publicK = keyFactory.generatePublic(x509KeySpec);
+			// 对数据加密
+			Cipher cipher = Cipher.getInstance(keyFactory.getAlgorithm());
+			cipher.init(Cipher.ENCRYPT_MODE, publicK);
+			int inputL = data.length;
+			out = new ByteArrayOutputStream();
+			int offset = 0;
+			byte[] cache = null;
+			int i = 0;
+			// 对数据进行分段加密
+			while (inputL - offset > 0) {
+				if (inputL - offset > MAX_ENCRYPT_BLOCK) {
+					cache = cipher.doFinal(data, offset, MAX_ENCRYPT_BLOCK);
+				} else {
+					cache = cipher.doFinal(data, offset, inputL - offset);
+				}
+				out.write(cache, 0, cache.length);
+				i++;
+				offset = i * MAX_ENCRYPT_BLOCK;
+			}
+			encryptedData = out.toByteArray();
+		} catch (Exception e) {
+			theLogger.exception(e);
+		} finally {
+			if (out != null) {
+				try {
+					out.close();
+				} catch (IOException e) {
+				}
+			}
+		}
+		return encryptedData;
 	}
 
 	//

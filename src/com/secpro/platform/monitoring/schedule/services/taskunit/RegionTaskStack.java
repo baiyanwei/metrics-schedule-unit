@@ -12,7 +12,7 @@ import org.quartz.CronExpression;
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
-import com.secpro.platform.monitoring.schedule.task.TaskConstant;
+import com.secpro.platform.monitoring.schedule.task.TaskUtil;
 
 /**
  * @author baiyanwei Oct 17, 2013
@@ -40,14 +40,14 @@ public class RegionTaskStack implements IService {
 	 * @param msuTask
 	 */
 	public MSUTask putMSUTask(MSUTask msuTask) throws Exception {
-		if (msuTask == null) {
+		if (msuTask == null || Assert.isEmptyString(msuTask.getID()) == true) {
 			return null;
 		}
 		synchronized (_regionTaskMap) {
-			if (_regionTaskMap.containsKey(msuTask._id) == false) {
-				this._regionTaskMap.put(msuTask._id, msuTask);
+			if (_regionTaskMap.containsKey(msuTask.getID()) == false) {
+				this._regionTaskMap.put(msuTask.getID(), msuTask);
 			} else {
-				throw new Exception(msuTask._id + " is already in Stack.");
+				throw new Exception(msuTask.getID() + " is already in Stack.");
 			}
 		}
 		return msuTask;
@@ -64,7 +64,7 @@ public class RegionTaskStack implements IService {
 		}
 		synchronized (_regionTaskMap) {
 			for (int i = 0; i < msuTaskList.size(); i++) {
-				this._regionTaskMap.put(msuTaskList.get(i)._id, msuTaskList.get(i));
+				this._regionTaskMap.put(msuTaskList.get(i).getID(), msuTaskList.get(i));
 			}
 		}
 	}
@@ -101,12 +101,12 @@ public class RegionTaskStack implements IService {
 	 * @param taskID
 	 * @return
 	 */
-	public MSUTask updateMUSTask(String taskID, MSUTask msuTask) {
-		if (Assert.isEmptyString(taskID) == true || msuTask == null) {
+	public MSUTask updateMUSTask(MSUTask msuTask) {
+		if (msuTask == null) {
 			return null;
 		}
 		synchronized (_regionTaskMap) {
-			this._regionTaskMap.put(taskID, msuTask);
+			this._regionTaskMap.put(msuTask.getID(), msuTask);
 		}
 		return msuTask;
 	}
@@ -138,11 +138,11 @@ public class RegionTaskStack implements IService {
 				}
 				if (scheduleMap.containsKey(taskObj.getOperation()) == false) {
 					List<MSUSchedule> scheduleList = new ArrayList<MSUSchedule>();
-					scheduleList.add(createScheduleOnTime(taskObj, nextPoint, currentTime));
+					scheduleList.add(TaskUtil.createScheduleOnTime(taskObj, nextPoint, currentTime));
 					scheduleMap.put(taskObj.getOperation(), scheduleList);
 				} else {
 					List<MSUSchedule> scheduleList = scheduleMap.get(taskObj.getOperation());
-					scheduleList.add(createScheduleOnTime(taskObj, nextPoint, currentTime));
+					scheduleList.add(TaskUtil.createScheduleOnTime(taskObj, nextPoint, currentTime));
 				}
 			} catch (ParseException e) {
 				e.printStackTrace();
@@ -152,8 +152,5 @@ public class RegionTaskStack implements IService {
 		return scheduleMap;
 	}
 
-	private MSUSchedule createScheduleOnTime(MSUTask taskObj, long schedulePoint, long createAt) {
-		//String taskID, String scheduleID, long schedulePoint, String region, String operation, long createAt)
-		return new MSUSchedule(taskObj.getID(),TaskConstant.getMSUScheduleID(taskObj,schedulePoint,createAt),schedulePoint, taskObj.getRegion(), taskObj.getOperation(),createAt);
-	}
+	
 }

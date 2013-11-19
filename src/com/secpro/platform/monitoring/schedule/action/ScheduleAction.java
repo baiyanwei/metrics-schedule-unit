@@ -45,7 +45,7 @@ public class ScheduleAction extends TimerTask {
 			for (Iterator<String> operationIter = scheduleMap.keySet().iterator(); operationIter.hasNext();) {
 				String operation = operationIter.next();
 				List<MSUSchedule> scheduleList = scheduleMap.get(operation);
-				_metricsScheduleUnitService._scheduleCoreService.putMSUSchedules(region, operation, scheduleList);
+				_metricsScheduleUnitService._scheduleCoreService.putMSUSchedules(region, operation, scheduleList, false);
 			}
 		}
 

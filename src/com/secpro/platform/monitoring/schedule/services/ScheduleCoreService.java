@@ -199,18 +199,18 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	 * @param msuTask
 	 * @return
 	 */
-	public void putMSUSchedule(MSUSchedule msuSchedule) {
+	public void putMSUSchedule(MSUSchedule msuSchedule, boolean isRealTime) {
 		if (msuSchedule == null) {
 			return;
 		}
-		this._regionScheduleStackMap.get(msuSchedule.getRegion()).putScheduleToBottom(msuSchedule.getOperation(), msuSchedule, false);
+		this._regionScheduleStackMap.get(msuSchedule.getRegion()).putScheduleToBottom(msuSchedule.getOperation(), msuSchedule, isRealTime);
 	}
 
-	public void putMSUSchedules(String region, String operation, List<MSUSchedule> msuScheduleList) {
+	public void putMSUSchedules(String region, String operation, List<MSUSchedule> msuScheduleList, boolean isRealTime) {
 		if (Assert.isEmptyCollection(msuScheduleList) == true || Assert.isEmptyString(region) == true || Assert.isEmptyString(operation) == true) {
 			return;
 		}
-		this._regionScheduleStackMap.get(region).putSchedules(operation, msuScheduleList, false);
+		this._regionScheduleStackMap.get(region).putSchedules(operation, msuScheduleList, isRealTime);
 	}
 
 	/**

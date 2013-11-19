@@ -1,5 +1,7 @@
 package com.secpro.platform.monitoring.schedule.bri;
 
+import java.net.URI;
+
 import com.secpro.platform.api.common.http.server.HttpServer;
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.services.ServiceHelper;
@@ -28,9 +30,8 @@ public class SyslogRuleBeaconInterface extends HttpServer implements IService {
 
 	@Override
 	public void stop() throws Exception {
-		// TODO Auto-generated method stub
 		super.stop();
-		// _MetricsSyslogRuleService = null;
+		_metricsSyslogRuleService = null;
 	}
 
 	/**
@@ -39,14 +40,14 @@ public class SyslogRuleBeaconInterface extends HttpServer implements IService {
 	 * @param requestParameterMap
 	 * @return
 	 */
-	public String fetchSysLogRule(String region, String mca, String pushPath) throws Exception {
-		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(mca) == true || Assert.isEmptyString(pushPath) == true) {
+	public String fetchSysLogRule(String region, String mca, URI publishURI) throws Exception {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(mca) == true || publishURI == null) {
 			new Exception("invalid parameter");
 		}
 		if (_metricsSyslogRuleService == null) {
 			_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
 		}
 
-		return _metricsSyslogRuleService.fetchScheduleByRequest(region, mca, pushPath);
+		return _metricsSyslogRuleService.fetchSyslogStandardRuleByRequest(region + "#" + mca, publishURI);
 	}
 }

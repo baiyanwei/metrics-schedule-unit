@@ -1,5 +1,7 @@
 package com.secpro.platform.monitoring.schedule.bri.syslogrulebeacon;
 
+import java.net.URI;
+
 import javax.xml.bind.annotation.XmlElement;
 
 import org.jboss.netty.handler.codec.http.HttpRequest;
@@ -61,7 +63,7 @@ public class SyslogRuleBeaconHttpRequstHandler implements IHttpRequestHandler {
 
 	@Override
 	public Object POST(HttpRequest request, Object messageObj) throws Exception {
-		//find the parameter in HTTP request header.
+		// find the parameter in HTTP request header.
 		if (_syslogRuleBeaconInterface == null) {
 			_syslogRuleBeaconInterface = ServiceHelper.findService(SyslogRuleBeaconInterface.class);
 		}
@@ -69,7 +71,7 @@ public class SyslogRuleBeaconHttpRequstHandler implements IHttpRequestHandler {
 			String region = request.getHeader(SyslogRuleBeaconInterface.REGION);
 			String mca = request.getHeader(SyslogRuleBeaconInterface.MCA);
 			String pushPath = request.getHeader(SyslogRuleBeaconInterface.PUSH_URL);
-			return _syslogRuleBeaconInterface.fetchSysLogRule(region, mca, pushPath);
+			return _syslogRuleBeaconInterface.fetchSysLogRule(region, mca, new URI(pushPath));
 		} catch (Exception e) {
 			theLogger.exception(e);
 			throw e;

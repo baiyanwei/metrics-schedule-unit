@@ -7,16 +7,26 @@ package com.secpro.platform.monitoring.schedule.services.taskunit;
  *         Task bean
  */
 public class MSUTask {
+	final public static String ID_TITLE = "tid";
+	final public static String REGION_TITLE = "reg";
+	final public static String OPERATION_TITLE = "ope";
+	final public static String CREATE_AT_TITLE = "cat";
+	final public static String SCHEDULE_TITLE = "sch";
+	final public static String CONTENT_TITLE = "con";
+	final public static String META_DATA_TITLE = "mda";
+	final public static String RES_ID_TITLE = "rid";
+	final public static String IS_REALTIME_TITLE = "isrt";
+	//
 
-	public String _id = "";
-	public String _region = "";
-	public String _operation = "";
-	public String _schedule = "";
-	public long _createAt = 0;
-	public String _metaData = null;
-	public String _content = null;
-	public long _resID = 0;
-	public boolean _isRealtime = false;
+	private String _id = "";
+	private String _region = "";
+	private String _operation = "";
+	private String _schedule = "";
+	private long _createAt = 0;
+	private String _metaData = null;
+	private String _content = null;
+	private long _resID = 0;
+	private boolean _isRealtime = false;
 
 	public MSUTask(String id, String region, String operation, String schedule, long createAt, String metaData, String content, long resID, boolean isRealtime) {
 		super();
