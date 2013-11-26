@@ -150,14 +150,14 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 			return;
 		}
 		//
-		Object[][] resultData = dataBaseStorageAdapter.selectRecords(theLogger.getMessageFormat("SQL_SELECT_ALL_REGION"));
-		if (resultData == null || resultData.length == 0) {
+		List<Object[]> resultData = dataBaseStorageAdapter.selectRecords(theLogger.getMessageFormat("SQL_SELECT_ALL_REGION"));
+		if (resultData == null || resultData.isEmpty() == true) {
 			return;
 		}
 		// {{CITY_NAME,CITY_CODE,CITY_LEVEL,PARENT_CODE},}
-		for (int i = 0; i < resultData.length; i++) {
-			this._regionNameMap.put((String) resultData[i][0], new String[] { (String) resultData[i][0], (String) resultData[i][1], (String) resultData[i][2],
-					(String) resultData[i][3] });
+		for (int i = 0; i < resultData.size(); i++) {
+			this._regionNameMap.put((String) resultData.get(i)[0], new String[] { (String) resultData.get(i)[0], (String) resultData.get(i)[1], (String) resultData.get(i)[2],
+					(String) resultData.get(i)[3] });
 		}
 	}
 

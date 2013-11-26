@@ -17,3 +17,4 @@ Import-Package: com.secpro.platform.storage.services,
  org.jboss.netty.buffer;version="3.7.0.Final",
  org.jboss.netty.handler.codec.http;version="3.7.0.Final",
  org.json
+Bundle-ClassPath: .

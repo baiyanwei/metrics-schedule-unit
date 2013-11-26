@@ -36,7 +36,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	public String _jmxObjectName = "secpro.msu:type=MetricsSyslogRuleService";
 	//
 	private HashMap<String, URI> _mcaPublishReferentMap = new HashMap<String, URI>();
-	private HashMap<String, MSUSysLogStandardRule> _syslogStandardRuleMap = new HashMap<String, MSUSysLogStandardRule>();
+	private HashMap<Long, MSUSysLogStandardRule> _syslogStandardRuleMap = new HashMap<Long, MSUSysLogStandardRule>();
 
 	@Override
 	public void start() throws PlatformException {
@@ -110,7 +110,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param content
 	 */
 	public void publishSysLogStandardRule(MSUSysLogStandardRule newRule) {
-		if (newRule == null || Assert.isEmptyString(newRule.getRuleID()) == true) {
+		if (newRule == null) {
 			return;
 		}
 		synchronized (this._syslogStandardRuleMap) {
@@ -118,7 +118,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		}
 		for (Iterator<String> keyIter = this._mcaPublishReferentMap.keySet().iterator(); keyIter.hasNext();) {
 			try {
-				publishSysLogStandardRuleToMCA(newRule.getContent(), this._mcaPublishReferentMap.get(keyIter.next()));
+				publishSysLogStandardRuleToMCA(getSysLogRulesMessage(newRule), this._mcaPublishReferentMap.get(keyIter.next()));
 			} catch (Exception e) {
 				theLogger.exception(e);
 				continue;
@@ -134,7 +134,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param content
 	 */
 	public void removeSysLogStandardRule(MSUSysLogStandardRule ruleObj) {
-		if (ruleObj == null || Assert.isEmptyString(ruleObj.getRuleID()) == true) {
+		if (ruleObj == null) {
 			return;
 		}
 		synchronized (this._syslogStandardRuleMap) {
@@ -160,12 +160,20 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 */
 	private String getSysLogStandardRules() {
 		StringBuffer rules = new StringBuffer();
-		String keyName = null;
-		for (Iterator<String> keyIter = this._syslogStandardRuleMap.keySet().iterator(); keyIter.hasNext();) {
+		Long keyName = null;
+		for (Iterator<Long> keyIter = this._syslogStandardRuleMap.keySet().iterator(); keyIter.hasNext();) {
 			keyName = keyIter.next();
 			rules.append(this._syslogStandardRuleMap.get(keyName));
 		}
 		return (rules.length() == 0 ? "" : rules.toString());
+	}
+
+	private String getSysLogRulesMessage(MSUSysLogStandardRule ruleObj) {
+		if (ruleObj == null) {
+			return "";
+		}
+		// TODO ??
+		return "";
 	}
 
 }

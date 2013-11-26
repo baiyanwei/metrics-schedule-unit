@@ -35,11 +35,11 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	//
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(DataBaseStorageAdapter.class);
 	// field
-	final private static String msuScheduleField = "TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,EXECUTE_AT,,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION";
+	final private static String msuScheduleField = "TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION";
 	// field
 	final private static String msuTaskField = "ID,REGION,CREATE_AT,SCHEDULE,OPERATION,CONTENT,META_DATA,RES_ID,IS_REALTIME";
-
-	final private static String msuSysLogStandardRuleField = "ID,CONTENT";
+	// field for SYSLOG standard rule.
+	final private static String msuSysLogStandardRuleField = "ID,RULE_KEY,RULE_VALUE,CHECK_NUM,CHECK_ACTION,TYPE_CODE";
 	//
 	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=DataBaseStorageAdapter")
 	public String _jmxObjectName = "secpro.msu:type=DataBaseStorageAdapter";
@@ -322,16 +322,16 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		regionSQL.append(" from MSU_TASK T WHERE T.IS_REALTIME<>0 ");
 		regionSQL.append("ORDER BY REGION,ID,OPERATION");
 		//
-		Object[][] rowData = selectRecords(regionSQL.toString());
+		List<Object[]> rowData = selectRecords(regionSQL.toString());
 		//
 		List<MSUTask> taskList = new ArrayList<MSUTask>();
-		if (rowData == null) {
+		if (rowData == null || rowData.isEmpty() == true) {
 			return taskList;
 		}
 		//
-		for (int i = 0; i < rowData.length; i++) {
+		for (int i = 0; i < rowData.size(); i++) {
 			try {
-				MSUTask task = buildMSUTask(rowData[i]);
+				MSUTask task = buildMSUTask(rowData.get(i));
 				if (task == null) {
 					continue;
 				}
@@ -371,18 +371,18 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		StringBuffer regionSQL = new StringBuffer();
 		regionSQL.append("select ");
 		regionSQL.append(msuSysLogStandardRuleField);
-		regionSQL.append(" from MSU_SCHEDULE");
+		regionSQL.append(" from SYSLOG_RULE");
 		regionSQL.append(" ORDER BY ID");
 		//
-		Object[][] rowData = selectRecords(regionSQL.toString());
+		List<Object[]> rowData = selectRecords(regionSQL.toString());
 		List<MSUSysLogStandardRule> syslogStandardRuleList = new ArrayList<MSUSysLogStandardRule>();
-		if (rowData == null) {
+		if (rowData == null || rowData.isEmpty() == true) {
 			return syslogStandardRuleList;
 		}
 		//
-		for (int i = 0; i < rowData.length; i++) {
+		for (int i = 0; i < rowData.size(); i++) {
 			try {
-				MSUSysLogStandardRule schedule = buildMSUSysLogStandardRule(rowData[i]);
+				MSUSysLogStandardRule schedule = buildMSUSysLogStandardRule(rowData.get(i));
 				if (schedule == null) {
 					continue;
 				}
@@ -420,15 +420,15 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		regionSQL.append(endTimePoint);
 		regionSQL.append(" ORDER BY TASK_ID,SCHEDULE_ID,SCHEDULE_POINT");
 		//
-		Object[][] rowData = selectRecords(regionSQL.toString());
+		List<Object[]> rowData = selectRecords(regionSQL.toString());
 		List<MSUSchedule> scheduleList = new ArrayList<MSUSchedule>();
-		if (rowData == null) {
+		if (rowData == null || rowData.isEmpty() == true) {
 			return scheduleList;
 		}
 		//
-		for (int i = 0; i < rowData.length; i++) {
+		for (int i = 0; i < rowData.size(); i++) {
 			try {
-				MSUSchedule schedule = buildMSUSchedule(rowData[i]);
+				MSUSchedule schedule = buildMSUSchedule(rowData.get(i));
 				if (schedule == null) {
 					continue;
 				}
@@ -442,7 +442,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		return scheduleList;
 	}
 
-	public Object[][] selectRecords(String sql) {
+	public List<Object[]> selectRecords(String sql) {
 		if (Assert.isEmptyString(sql) == true) {
 			return null;
 		}
@@ -451,21 +451,20 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		Connection conn = null;
 		Statement statment = null;
 		ResultSet resultSet = null;
-		Object[][] resulteData = null;
+		List<Object[]> resulteData = new ArrayList<Object[]>();
 		try {
 			conn = _dataBaseStorageService.getConnection();
 			statment = conn.createStatement();
 			resultSet = statment.executeQuery(sql);
-			resulteData = new Object[resultSet.getRow()][resultSet.getMetaData().getColumnCount()];
-			int i = 0;
 			while (resultSet.next()) {
+				Object[] rowData = new Object[resultSet.getMetaData().getColumnCount()];
 				for (int c = 0; c < resultSet.getMetaData().getColumnCount(); c++) {
-					resulteData[i][c] = resultSet.getObject(c);
+					rowData[c] = resultSet.getObject(c+1);
 				}
-				i++;
+				resulteData.add(rowData);
 			}
-		} catch (SQLException e) {
-			e.printStackTrace();
+		} catch (Exception e) {
+			theLogger.exception("sql:" + sql, e);
 		} finally {
 			if (resultSet != null) {
 				try {
@@ -625,27 +624,26 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	}
 
 	final private MSUSysLogStandardRule buildMSUSysLogStandardRule(Object[] data) throws Exception {
-		if (data == null || data.length != 2) {
+		if (data == null || data.length != 6) {
 			return null;
 		}
 		MSUSysLogStandardRule msuSyslogRule = new MSUSysLogStandardRule();
-		// CREATE TABLE MSU_SCHEDULE
+		// CREATE TABLE SYSLOG_RULE
 		// (
-		// TASK_ID VARCHAR2(50) NOT NULL,
-		// SCHEDULE_ID VARCHAR2(50) NOT NULL,
-		// SCHEDULE_POINT NUMBER(20) NOT NULL,
-		// CREATE_AT NUMBER(20) NOT NULL,
-		// REGION VARCHAR2(50) NOT NULL,
-		// OPERATION VARCHAR2(50) NOT NULL,
-		// FETCH_AT NUMBER(20),
-		// EXECUTE_AT NUMBER(20),
-		// EXECUTE_COST NUMBER(20),
-		// EXECUTE_STATUS NUMBER(1),
-		// EXECUTE_DESCRIPTION VARCHAR2(50)
+		// ID NUMBER(20) NOT NULL,
+		// RULE_KEY VARCHAR2(20) NOT NULL,
+		// RULE_VALUE VARCHAR2(100) NOT NULL,
+		// CHECK_NUM NUMBER(20) NOT NULL,
+		// CHECK_ACTION VARCHAR2(2) NOT NULL,
+		// TYPE_CODE VARCHAR2(50) NOT NULL
 		// )
 		try {
-			msuSyslogRule.setRuleID((String) data[0]);
-			msuSyslogRule.setContent((String) data[1]);
+			msuSyslogRule.setRuleID((Long) data[0]);
+			msuSyslogRule.setRuleKey((String) data[1]);
+			msuSyslogRule.setRuleValue((String) data[2]);
+			msuSyslogRule.setCheckNum((Long) data[3]);
+			msuSyslogRule.setCheckAction((String) data[4]);
+			msuSyslogRule.setTypeCode((String) data[5]);
 		} catch (Exception e) {
 			throw e;
 		}

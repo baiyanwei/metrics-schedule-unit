@@ -13,7 +13,7 @@
                value="8900">
          </property>
          <handler
-               id="metrics-schedule-unit.msu_task_fetch"
+               id="metrics-schedule-unit.taskScheduleAPI_handler"
                implement_class="com.secpro.platform.monitoring.schedule.bri.taskbeacon.AgentTaskBeaconHttpRequstHandler"
                name="metrics-schedule-unit.msu_task_fetch">
             <property
@@ -32,12 +32,31 @@
                value="8901">
          </property>
          <handler
-               id="metrics-schedule-unit.msu_samples_fetch"
+               id="metrics-schedule-unit.syslogRuleAPIHandler"
                implement_class="com.secpro.platform.monitoring.schedule.bri.syslogrulebeacon.SyslogRuleBeaconHttpRequstHandler"
-               name="metrics-schedule-unit.msu_samples_fetch">
+               name="metrics-schedule-unit.syslogRuleAPIHandler">
             <property
                   name="path"
                   value="/msu/syslog/standard/fetch">
+            </property>
+         </handler>
+      </server>
+      <server
+            description="task management Interface"
+            id="metrics-schedule-unit.ManageTaskBeaconInterface"
+            implement_class="com.secpro.platform.monitoring.schedule.bri.ManageTaskBeaconInterface"
+            name="metrics-schedule-unit.ManageTaskBeaconInterface">
+         <property
+               name="port"
+               value="8902">
+         </property>
+         <handler
+               id="metrics-schedule-unit.ManageTaskBeaconInterfaceHandler"
+               implement_class="com.secpro.platform.monitoring.schedule.bri.managetaskbeacon.ManageTaskBeaconHttpRequstHandler"
+               name="metrics-schedule-unit.ManageTaskBeaconInterfaceHandler">
+            <property
+                  name="path"
+                  value="/msu/manage">
             </property>
          </handler>
       </server>

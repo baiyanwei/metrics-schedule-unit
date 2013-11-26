@@ -6,7 +6,6 @@ import org.osgi.framework.Version;
 
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.log.utils.PlatformLogger;
-import com.secpro.platform.monitoring.schedule.services.ManagementMessageService;
 import com.secpro.platform.monitoring.schedule.services.MetricsScheduleUnitService;
 import com.secpro.platform.monitoring.schedule.services.MetricsSyslogRuleService;
 import com.secpro.platform.monitoring.schedule.services.NodeService;
@@ -33,11 +32,11 @@ public class Activator implements BundleActivator {
 	 * )
 	 */
 	public void start(BundleContext context) throws Exception {
-		theLogger.info("start the metric collect agent service");
+		theLogger.info("####start the metric collect agent service");
 		_context = context;
 		_version = context.getBundle().getVersion();
 		registerServices();
-		theLogger.info("The Metrics Schedule Unit stared completely");
+		theLogger.info("####The Metrics Schedule Unit stared completely");
 
 	}
 
@@ -67,7 +66,5 @@ public class Activator implements BundleActivator {
 		ServiceHelper.registerService(new MetricsScheduleUnitService());
 		//
 		ServiceHelper.registerService(new MetricsSyslogRuleService());
-		//
-		ServiceHelper.registerService(new ManagementMessageService());
 	}
 }
