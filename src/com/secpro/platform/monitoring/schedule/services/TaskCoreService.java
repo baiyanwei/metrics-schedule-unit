@@ -8,6 +8,9 @@ import java.util.List;
 import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
 import com.secpro.platform.core.metrics.Metric;
@@ -249,21 +252,25 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	// STATISTICAL METHODS
 	//
 	@Metric(description = "get size of the task region ")
-	public int getRegionTaskSize(String region) {
+	public String getRegionTaskSize(String region) {
 		if (Assert.isEmptyString(region) == true || this._regionTaskStackMap.containsKey(region) == false) {
-			return 0;
+			return "{}";
 		}
-		return this._regionTaskStackMap.get(region).reportStackSize();
+		return this._regionTaskStackMap.get(region).reportStackSize().toString();
 	}
 
 	@Metric(description = "get every detail of task region ")
 	public String getEveryRegionTaskSize() {
-		StringBuffer reportStr = new StringBuffer();
+		JSONObject report = new JSONObject();
 		String region = null;
 		for (Iterator<String> regionIter = this._regionTaskStackMap.keySet().iterator(); regionIter.hasNext();) {
 			region = regionIter.next();
-			reportStr.append(reportStr).append("\t\t").append(this._regionTaskStackMap.get(region).reportStackSize()).append("\r\n");
+			try {
+				report.put(region, this._regionTaskStackMap.get(region).reportStackSize());
+			} catch (JSONException e) {
+				continue;
+			}
 		}
-		return reportStr.toString();
+		return report.toString();
 	}
 }

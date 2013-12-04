@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.quartz.CronExpression;
 
 import com.secpro.platform.core.services.IService;
@@ -115,15 +118,6 @@ public class RegionTaskStack implements IService {
 		return msuTask;
 	}
 
-	/**
-	 * report the stack size.
-	 * 
-	 * @return
-	 */
-	public int reportStackSize() {
-		return this._regionTaskMap.size();
-	}
-
 	public HashMap<String, List<MSUSchedule>> nextHourSchedule(Date currentPoint) {
 		String taskID = null;
 		MsuTask taskObj = null;
@@ -156,4 +150,24 @@ public class RegionTaskStack implements IService {
 		return scheduleMap;
 	}
 
+	/**
+	 * report the stack size.
+	 * 
+	 * @return
+	 */
+	public JSONObject reportStackSize() {
+		JSONObject report = new JSONObject();
+		try {
+			report.put("region", this._region);
+			report.put("size", this._regionTaskMap.size());
+			JSONArray taskArray = new JSONArray();
+			for (Iterator<String> iter = this._regionTaskMap.keySet().iterator(); iter.hasNext();) {
+				taskArray.put(iter.next());
+			}
+			report.put("detail", taskArray);
+		} catch (JSONException e) {
+			theLogger.exception(e);
+		}
+		return report;
+	}
 }

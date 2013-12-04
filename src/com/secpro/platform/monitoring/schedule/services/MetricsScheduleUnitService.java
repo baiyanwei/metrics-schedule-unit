@@ -56,7 +56,7 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	// Logging Object
 	//
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(MetricsScheduleUnitService.class);
-	
+
 	private static HashMap<String, MessageFormat> messageFormatters = new HashMap<String, MessageFormat>();
 	private static String[] messageFiles = new String[] { "msu-task.js" };
 
@@ -117,8 +117,13 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		initRegionReferent();
 		//
 		startScheduleTimer();
+
 		//
 		theLogger.info("starUp", _regionNameMap.keySet().toString());
+		
+		System.out.println(_scheduleCoreService.getEveryRegionScheduleSize());
+		System.out.println(_taskCoreService.getEveryRegionTaskSize());
+		
 	}
 
 	@Override
@@ -135,9 +140,10 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		_scheduleTimer = new Timer("MetricsScheduleUnitService._scheduleTimer");
 		// start on next hour 00:00
 		_scheduleTimer.schedule(new ScheduleAction(this), delayPoint, _scheduleTimerExecuteInterval);
-		if (delayPoint > 60000) {
-			new ScheduleAction(this).run();
-		}
+		// test
+		// if (delayPoint > 60000) {
+		// new ScheduleAction(this).run();
+		// }
 	}
 
 	/**

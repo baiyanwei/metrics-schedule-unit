@@ -5,8 +5,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.secpro.platform.core.services.ILife;
 import com.secpro.platform.core.utils.Assert;
+import com.secpro.platform.log.utils.PlatformLogger;
 
 /**
  * @author baiyanwei Oct 17, 2013
@@ -17,6 +22,7 @@ import com.secpro.platform.core.utils.Assert;
 public class RegionScheduleStack implements ILife {
 	final public static int DISTRIBUTE_SCHEDULE_TYPE_AVERAGE = 0;
 	final public static int DISTRIBUTE_SCHEDULE_TYPE_FAST = 1;
+	final private static PlatformLogger theLogger = PlatformLogger.getLogger(RegionScheduleStack.class);
 	public String _region = "HB";
 	public int _distributeScheduleType = 0;
 	private HashMap<String, ArrayList<MSUSchedule>> _operationRealtimeScheduleMap = new HashMap<String, ArrayList<MSUSchedule>>();
@@ -411,9 +417,41 @@ public class RegionScheduleStack implements ILife {
 		return operationList;
 	}
 
-	public String reportStackSize() {
-		// TODO Auto-generated method stub
-		return null;
+	public JSONObject reportStackSize() {
+		JSONObject report = new JSONObject();
+		try {
+			report.put("region", this._region);
+			report.put("realTime", getScheduleMapView(_operationRealtimeScheduleMap));
+			report.put("schedule", getScheduleMapView(_operationFrequencyScheduleMap));
+		} catch (JSONException e) {
+			theLogger.exception(e);
+		}
+
+		return report;
+	}
+
+	private JSONObject getScheduleMapView(HashMap<String, ArrayList<MSUSchedule>> operationScheduleMap) {
+		JSONObject report = new JSONObject();
+		for (Iterator<String> keyIter = operationScheduleMap.keySet().iterator(); keyIter.hasNext();) {
+			try {
+				String key = keyIter.next();
+				ArrayList<MSUSchedule> scheduleList = operationScheduleMap.get(key);
+				JSONArray scheduleArray = new JSONArray();
+				for (int i = 0; i < scheduleList.size(); i++) {
+					scheduleArray.put(scheduleList.get(i).getScheduleID());
+				}
+				JSONObject operationObj = new JSONObject();
+				operationObj.put("size", scheduleList.size());
+				operationObj.put("name", key);
+				operationObj.put("detail", scheduleArray);
+				//
+				report.put(key, operationObj);
+			} catch (Exception e) {
+				continue;
+			}
+
+		}
+		return report;
 	}
 
 }

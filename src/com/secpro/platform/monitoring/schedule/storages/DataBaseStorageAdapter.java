@@ -395,24 +395,11 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 
 	public List<MSUSchedule> querySchedulesNofetching(long startTimePoint, long endTimePoint) {
 
-		// CREATE TABLE MSU_SCHEDULE
-		// (
-		// TASK_ID VARCHAR2(50) NOT NULL,
-		// SCHEDULE_ID VARCHAR2(50) NOT NULL,
-		// SCHEDULE_POINT NUMBER(20) NOT NULL,
-		// CREATE_AT NUMBER(20) NOT NULL,
-		// REGION VARCHAR2(50) NOT NULL,
-		// OPERATION VARCHAR2(50) NOT NULL,
-		// FETCH_AT NUMBER(20),
-		// EXECUTE_AT NUMBER(20),
-		// EXECUTE_COST NUMBER(20),
-		// EXECUTE_STATUS NUMBER(1),
-		// EXECUTE_DESCRIPTION VARCHAR2(50)
-		// )
+		//TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION
 		StringBuffer regionSQL = new StringBuffer();
-		regionSQL.append("select ");
+		regionSQL.append("SELECT ");
 		regionSQL.append(msuScheduleField);
-		regionSQL.append(" from MSU_SCHEDULE T WHERE T.SCHEDULE_POINT>");
+		regionSQL.append(" FROM MSU_SCHEDULE T WHERE T.FETCH_AT=0 AND T.SCHEDULE_POINT>");
 		regionSQL.append(startTimePoint).append(" AND SCHEDULE_POINT<");
 		regionSQL.append(endTimePoint);
 		regionSQL.append(" ORDER BY TASK_ID,SCHEDULE_ID,SCHEDULE_POINT");
@@ -591,20 +578,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 			return null;
 		}
 		MSUSchedule schedule = new MSUSchedule();
-		// CREATE TABLE MSU_SCHEDULE
-		// (
-		// TASK_ID VARCHAR2(50) NOT NULL,
-		// SCHEDULE_ID VARCHAR2(50) NOT NULL,
-		// SCHEDULE_POINT NUMBER(20) NOT NULL,
-		// CREATE_AT NUMBER(20) NOT NULL,
-		// REGION VARCHAR2(50) NOT NULL,
-		// OPERATION VARCHAR2(50) NOT NULL,
-		// FETCH_AT NUMBER(20),
-		// EXECUTE_AT NUMBER(20),
-		// EXECUTE_COST NUMBER(20),
-		// EXECUTE_STATUS NUMBER(1),
-		// EXECUTE_DESCRIPTION VARCHAR2(50)
-		// )
+		//TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION
 		try {
 			schedule.setTaskID((String) data[0]);
 			schedule.setScheduleID((String) data[1]);
@@ -613,7 +587,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 			schedule.setRegion((String) data[4]);
 			schedule.setOperation((String) data[5]);
 			schedule.setFetchAt(((Number) data[6]).longValue());
-			schedule.setFetchAt(((Number) data[7]).longValue());
+			schedule.setFetchBy((String) data[7]);
 			schedule.setExecuteAt(((Number) data[8]).longValue());
 			schedule.setExecuteCost(((Number) data[9]).longValue());
 			schedule.setExecuteStatus(((Number) data[10]).longValue());

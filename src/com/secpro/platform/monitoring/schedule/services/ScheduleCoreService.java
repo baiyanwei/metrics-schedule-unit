@@ -8,6 +8,8 @@ import java.util.List;
 import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
+import org.json.JSONObject;
+
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
 import com.secpro.platform.core.metrics.Metric;
@@ -77,13 +79,13 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 			for (Iterator<String> regionIter = regionGroupDateMap.keySet().iterator(); regionIter.hasNext();) {
 				//
 				RegionScheduleStack regionScheduleStack = new RegionScheduleStack();
+				regionScheduleStack._region = regionIter.next();
 				try {
 					regionScheduleStack.start();
 				} catch (Exception e1) {
 					theLogger.exception(e1);
 					continue;
 				}
-				regionScheduleStack._region = regionIter.next();
 				//
 				_regionScheduleStackMap.put(regionScheduleStack._region, regionScheduleStack);
 				//
@@ -133,7 +135,9 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 			try {
 				unfetchSchedule = unfetchScheduleList.get(i);
 				if (regionScheduleMap.containsKey(unfetchSchedule.getRegion()) == false) {
+					// new operation map
 					HashMap<String, ArrayList<MSUSchedule>> operationScheduleMap = new HashMap<String, ArrayList<MSUSchedule>>();
+					// new schudel list
 					ArrayList<MSUSchedule> operationScheduleList = new ArrayList<MSUSchedule>();
 					operationScheduleList.add(unfetchSchedule);
 					operationScheduleMap.put(unfetchSchedule.getOperation(), operationScheduleList);
@@ -143,10 +147,10 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 					if (operationScheduleMap.containsKey(unfetchSchedule.getOperation()) == false) {
 						ArrayList<MSUSchedule> operationScheduleList = new ArrayList<MSUSchedule>();
 						operationScheduleList.add(unfetchSchedule);
+						operationScheduleMap.put(unfetchSchedule.getOperation(), operationScheduleList);
 					} else {
 						ArrayList<MSUSchedule> operationScheduleList = operationScheduleMap.get(unfetchSchedule.getOperation());
 						operationScheduleList.add(unfetchSchedule);
-						operationScheduleMap.put(unfetchSchedule.getOperation(), operationScheduleList);
 					}
 				}
 			} catch (Exception e) {
@@ -295,17 +299,21 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 		if (Assert.isEmptyString(region) == true || this._regionScheduleStackMap.containsKey(region) == false) {
 			return "No data";
 		}
-		return this._regionScheduleStackMap.get(region).reportStackSize();
+		return this._regionScheduleStackMap.get(region).reportStackSize().toString();
 	}
 
 	@Metric(description = "get every detail of task region ")
-	public String getEveryRegionTaskSize() {
-		StringBuffer reportStr = new StringBuffer();
+	public String getEveryRegionScheduleSize() {
+		JSONObject report = new JSONObject();
 		String region = null;
 		for (Iterator<String> regionIter = this._regionScheduleStackMap.keySet().iterator(); regionIter.hasNext();) {
 			region = regionIter.next();
-			reportStr.append(reportStr).append("\t\t").append(this._regionScheduleStackMap.get(region).reportStackSize()).append("\r\n");
+			try {
+				report.put(region, this._regionScheduleStackMap.get(region).reportStackSize());
+			} catch (Exception e) {
+				continue;
+			}
 		}
-		return reportStr.toString();
+		return report.toString();
 	}
 }
