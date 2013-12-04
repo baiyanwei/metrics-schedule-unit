@@ -7,144 +7,140 @@ package com.secpro.platform.monitoring.schedule.services.scheduleunit;
  * 
  */
 public class MSUSchedule {
-	// (
-	// task_id VARCHAR2(50) not null,
-	// schedule_id VARCHAR2(50) not null,
-	// schedule_point NUMBER(20) not null,
-	// create_at NUMBER(20) not null,
-	// region VARCHAR2(50) not null,
-	// operation VARCHAR2(50) not null,
-	// fetch_at NUMBER(20),
-	// execute_at NUMBER(20),
-	// execute_cost NUMBER(20),
-	// execute_status NUMBER(1),
-	// execute_description VARCHAR2(50)
-	// )
-	public String _taskID = null;
-	public String _scheduleID = null;
-	public long _schedulePoint = 0;
-	public long _createAt = 0;
-	public String _region = null;
-	public String _operation = null;
-	public long _fetchAt = 0;
-	public long _executeAt = 0;
-	public long _executeCost = 0;
-	public long _executeStatus = 0;
-	public String _executeDescription = "";
-
-	public MSUSchedule(String taskID, String scheduleID, long schedulePoint, long createAt, String region, String operation, long fetchAt, long executeAt, long executeCost,
-			long executeStatus, String executeDescription) {
-		this._taskID = taskID;
-		this._scheduleID = scheduleID;
-		this._schedulePoint = schedulePoint;
-		this._region = region;
-		this._operation = operation;
-		this._createAt = createAt;
-		this._fetchAt = fetchAt;
-		this._executeAt = executeAt;
-		this._executeCost = executeCost;
-		this._executeStatus = executeStatus;
-		this._executeDescription = executeDescription;
-	}
-
-	public MSUSchedule(String taskID, String scheduleID, long schedulePoint, String region, String operation, long createAt) {
-		this._taskID = taskID;
-		this._scheduleID = scheduleID;
-		this._schedulePoint = schedulePoint;
-		this._region = region;
-		this._operation = operation;
-		this._createAt = createAt;
-	}
+	// MSU_SCHEDULE
+	// Name Type Nullable Default Comments
+	// ------------------- ------------ -------- ------- --------
+	// TASK_ID VARCHAR2(50) 任务标识ID
+	// SCHEDULE_ID VARCHAR2(50) 任务调度ID
+	// SCHEDULE_POINT NUMBER(20) 调度时间
+	// CREATE_AT NUMBER(20) 入库时间
+	// REGION VARCHAR2(50) 省市县编码
+	// OPERATION VARCHAR2(50) 任务操作
+	// FETCH_AT NUMBER(20) Y 获取时间
+	// FETCH_BY VARCHAR2(50) Y 获取者
+	// EXECUTE_AT NUMBER(20) Y 执行时间
+	// EXECUTE_COST NUMBER(20) Y 执行时长
+	// EXECUTE_STATUS NUMBER(1) Y 执行情况
+	// EXECUTE_DESCRIPTION VARCHAR2(50) Y 执行描述
+	private String taskID = null;
+	private String scheduleID = null;
+	private long schedulePoint = 0;
+	private long createAt = 0;
+	private String region = null;
+	private String operation = null;
+	private long fetchAt = 0;
+	private String fetchBy = null;
+	private long executeAt = 0;
+	private long executeCost = 0;
+	private long executeStatus = 0;
+	private String executeDescription = "";
 
 	public MSUSchedule() {
 	}
 
+	public MSUSchedule(String taskID, String scheduleID, long schedulePoint, String region, String operation, long createAt) {
+		this.taskID = taskID;
+		this.scheduleID = scheduleID;
+		this.schedulePoint = schedulePoint;
+		this.region = region;
+		this.operation = operation;
+		this.createAt = createAt;
+	}
+
 	public String getTaskID() {
-		return _taskID;
+		return taskID;
 	}
 
 	public void setTaskID(String taskID) {
-		this._taskID = taskID;
+		this.taskID = taskID;
 	}
 
 	public String getScheduleID() {
-		return _scheduleID;
+		return scheduleID;
 	}
 
 	public void setScheduleID(String scheduleID) {
-		this._scheduleID = scheduleID;
+		this.scheduleID = scheduleID;
 	}
 
 	public long getSchedulePoint() {
-		return _schedulePoint;
+		return schedulePoint;
 	}
 
 	public void setSchedulePoint(long schedulePoint) {
-		this._schedulePoint = schedulePoint;
+		this.schedulePoint = schedulePoint;
 	}
 
 	public long getCreateAt() {
-		return _createAt;
+		return createAt;
 	}
 
 	public void setCreateAt(long createAt) {
-		this._createAt = createAt;
+		this.createAt = createAt;
 	}
 
 	public String getRegion() {
-		return _taskID;
+		return region;
 	}
 
 	public void setRegion(String region) {
-		this._region = region;
+		this.region = region;
 	}
 
 	public String getOperation() {
-		return _operation;
+		return operation;
 	}
 
 	public void setOperation(String operation) {
-		this._operation = operation;
+		this.operation = operation;
 	}
 
 	public long getFetchAt() {
-		return _fetchAt;
+		return fetchAt;
 	}
 
 	public void setFetchAt(long fetchAt) {
-		this._fetchAt = fetchAt;
+		this.fetchAt = fetchAt;
+	}
+
+	public String getFetchBy() {
+		return fetchBy;
+	}
+
+	public void setFetchBy(String fetchBy) {
+		this.fetchBy = fetchBy;
 	}
 
 	public long getExecuteAt() {
-		return _executeAt;
+		return executeAt;
 	}
 
 	public void setExecuteAt(long executeAt) {
-		this._executeAt = executeAt;
+		this.executeAt = executeAt;
 	}
 
 	public long getExecuteCost() {
-		return _executeCost;
+		return executeCost;
 	}
 
 	public void setExecuteCost(long executeCost) {
-		this._executeCost = executeCost;
+		this.executeCost = executeCost;
 	}
 
 	public long getExecuteStatus() {
-		return _executeStatus;
+		return executeStatus;
 	}
 
 	public void setExecuteStatus(long executeStatus) {
-		this._executeStatus = executeStatus;
+		this.executeStatus = executeStatus;
 	}
 
 	public String getExecuteDescription() {
-		return _executeDescription;
+		return executeDescription;
 	}
 
 	public void setExecuteDescription(String executeDescription) {
-		this._executeDescription = executeDescription;
+		this.executeDescription = executeDescription;
 	}
 
 }

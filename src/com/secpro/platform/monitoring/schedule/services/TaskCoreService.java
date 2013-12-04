@@ -16,7 +16,7 @@ import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
-import com.secpro.platform.monitoring.schedule.services.taskunit.MSUTask;
+import com.secpro.platform.monitoring.schedule.services.taskunit.MsuTask;
 import com.secpro.platform.monitoring.schedule.services.taskunit.RegionTaskStack;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
@@ -58,13 +58,13 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 */
 	private void initRegionTaskData() {
 		// #1 read the task records from database
-		List<MSUTask> regionTaskList = getRegionTaskFromDataBase();
+		List<MsuTask> regionTaskList = getRegionTaskFromDataBase();
 		if (Assert.isEmptyCollection(regionTaskList) == true) {
 			theLogger.warn("NoTaskRcoreds");
 			return;
 		}
 		// #2 group the task record by region and operation.
-		HashMap<String, ArrayList<MSUTask>> regionTaskGroupDateMap = groupTaskByRegion(regionTaskList);
+		HashMap<String, ArrayList<MsuTask>> regionTaskGroupDateMap = groupTaskByRegion(regionTaskList);
 		if (Assert.isEmptyMap(regionTaskGroupDateMap) == true) {
 			return;
 		}
@@ -92,20 +92,20 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param dataArrays
 	 * @return
 	 */
-	private HashMap<String, ArrayList<MSUTask>> groupTaskByRegion(List<MSUTask> regionTaskDataList) {
+	private HashMap<String, ArrayList<MsuTask>> groupTaskByRegion(List<MsuTask> regionTaskDataList) {
 		//
-		HashMap<String, ArrayList<MSUTask>> regionGroupMap = new HashMap<String, ArrayList<MSUTask>>();
+		HashMap<String, ArrayList<MsuTask>> regionGroupMap = new HashMap<String, ArrayList<MsuTask>>();
 		//
-		MSUTask msuTask = null;
+		MsuTask msuTask = null;
 		for (int i = 0; i < regionTaskDataList.size(); i++) {
 			try {
 				msuTask = regionTaskDataList.get(i);
 				if (regionGroupMap.containsKey(msuTask.getRegion()) == false) {
-					ArrayList<MSUTask> taskRowList = new ArrayList<MSUTask>();
+					ArrayList<MsuTask> taskRowList = new ArrayList<MsuTask>();
 					taskRowList.add(msuTask);
 					regionGroupMap.put(msuTask.getRegion(), taskRowList);
 				} else {
-					ArrayList<MSUTask> taskRowList = regionGroupMap.get(msuTask.getRegion());
+					ArrayList<MsuTask> taskRowList = regionGroupMap.get(msuTask.getRegion());
 					taskRowList.add(msuTask);
 				}
 			} catch (Exception e) {
@@ -121,10 +121,10 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * 
 	 * @return
 	 */
-	private List<MSUTask> getRegionTaskFromDataBase() {
+	private List<MsuTask> getRegionTaskFromDataBase() {
 		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
 		if (dataBaseStorageAdapter == null) {
-			return new ArrayList<MSUTask>();
+			return new ArrayList<MsuTask>();
 		}
 		return dataBaseStorageAdapter.queryAllFrequencyTask();
 	}
@@ -150,12 +150,12 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param taskIDs
 	 * @return
 	 */
-	public HashMap<String, MSUTask> getMSUTasks(String region, String[] taskIDs) {
+	public HashMap<String, MsuTask> getMSUTasks(String region, String[] taskIDs) {
 		if (Assert.isEmptyString(region) == true || taskIDs == null || taskIDs.length == 0) {
-			return new HashMap<String, MSUTask>();
+			return new HashMap<String, MsuTask>();
 		}
-		HashMap<String, MSUTask> msuTaskMap = new HashMap<String, MSUTask>();
-		MSUTask msuTask = null;
+		HashMap<String, MsuTask> msuTaskMap = new HashMap<String, MsuTask>();
+		MsuTask msuTask = null;
 		for (int i = 0; i < taskIDs.length; i++) {
 			msuTask = this._regionTaskStackMap.get(region).findMSUTask(taskIDs[i]);
 			if (msuTask == null) {
@@ -172,8 +172,8 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param msuTask
 	 * @return
 	 */
-	public MSUTask putMSUTask(MSUTask msuTask) {
-		if (msuTask == null || Assert.isEmptyString(msuTask.getID()) == true || Assert.isEmptyString(msuTask.getRegion()) == true) {
+	public MsuTask putMSUTask(MsuTask msuTask) {
+		if (msuTask == null || Assert.isEmptyString(msuTask.getId()) == true || Assert.isEmptyString(msuTask.getRegion()) == true) {
 			return null;
 		}
 		try {
@@ -198,7 +198,7 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param taskID
 	 * @return
 	 */
-	public MSUTask getMSUTask(String region, String taskID) {
+	public MsuTask getMSUTask(String region, String taskID) {
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
 			return null;
 		}
@@ -213,14 +213,14 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param taskID
 	 * @return
 	 */
-	public MSUTask removeMSUTask(MSUTask task) {
-		if (task == null || Assert.isEmptyString(task.getRegion()) == true || Assert.isEmptyString(task.getID()) == true) {
+	public MsuTask removeMSUTask(MsuTask task) {
+		if (task == null || Assert.isEmptyString(task.getRegion()) == true || Assert.isEmptyString(task.getId()) == true) {
 			return null;
 		}
 		if (this._regionTaskStackMap.containsKey(task.getRegion()) == false) {
 			return null;
 		}
-		return this._regionTaskStackMap.get(task.getRegion()).removeMUSTask(task.getID());
+		return this._regionTaskStackMap.get(task.getRegion()).removeMUSTask(task.getId());
 	}
 
 	/**
@@ -231,7 +231,7 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	 * @param msuTask
 	 * @return
 	 */
-	public MSUTask updateMSUTask(MSUTask msuTask) {
+	public MsuTask updateMSUTask(MsuTask msuTask) {
 		if (msuTask == null) {
 			return null;
 		}

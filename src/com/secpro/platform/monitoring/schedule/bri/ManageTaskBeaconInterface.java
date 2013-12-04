@@ -11,7 +11,7 @@ import com.secpro.platform.monitoring.schedule.services.MetricsScheduleUnitServi
 import com.secpro.platform.monitoring.schedule.services.MetricsSyslogRuleService;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
 import com.secpro.platform.monitoring.schedule.services.syslogruleunit.MSUSysLogStandardRule;
-import com.secpro.platform.monitoring.schedule.services.taskunit.MSUTask;
+import com.secpro.platform.monitoring.schedule.services.taskunit.MsuTask;
 import com.secpro.platform.monitoring.schedule.task.TaskUtil;
 
 /**
@@ -22,7 +22,7 @@ import com.secpro.platform.monitoring.schedule.task.TaskUtil;
  */
 public class ManageTaskBeaconInterface extends HttpServer {
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(ManageTaskBeaconInterface.class);
-	final public static String OPERATION_TYPE = "operationType";
+
 	final public static String[] MANAGEMENT_OPERATION_TYPE = new String[] { "TOPIC-TASK-ADD", "TOPIC-TASK-UPDATE", "TOPIC-TASK-REMOVE", "TOPIC-SYSLOG-STANDARD-RULE-ADD",
 			"TOPIC-SYSLOG-STANDARD-RULE-UPDATE", "TOPIC-SYSLOG-STANDARD-RULE-REMOVE" };
 	private MetricsScheduleUnitService _metricsScheduleUnitService = null;
@@ -47,7 +47,7 @@ public class ManageTaskBeaconInterface extends HttpServer {
 		try {
 			// task add.
 			if ("TOPIC-TASK-ADD".equalsIgnoreCase(managementOperationType) == true) {
-				MSUTask msuTask = buildMSUTask(messageContent);
+				MsuTask msuTask = buildMSUTask(messageContent);
 				if (msuTask == null) {
 					theLogger.error("errorTaskJSONFormat", messageContent);
 					throw new PlatformException("errorTaskJSONFormat " + messageContent);
@@ -55,7 +55,7 @@ public class ManageTaskBeaconInterface extends HttpServer {
 				if (_metricsScheduleUnitService == null) {
 					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
 				}
-				if (msuTask.isRealtime() == true) {
+				if (msuTask.getIsRealtime() == true) {
 					// Task is a real-time task.
 					// real-time task just add into schedule system.
 					MSUSchedule msuSchedule = TaskUtil.createScheduleAsRealTime(msuTask);
@@ -63,14 +63,14 @@ public class ManageTaskBeaconInterface extends HttpServer {
 						theLogger.error("createScheduleError", messageContent);
 						throw new PlatformException("createScheduleError " + messageContent);
 					}
-					_metricsScheduleUnitService._scheduleCoreService.putMSUSchedule(msuSchedule, msuTask.isRealtime());
+					_metricsScheduleUnitService._scheduleCoreService.putMSUSchedule(msuSchedule, msuTask.getIsRealtime());
 				} else {
 					// schedule task.
 					_metricsScheduleUnitService._taskCoreService.putMSUTask(msuTask);
 				}
 			} else if ("TOPIC-TASK-UPDATE".equalsIgnoreCase(managementOperationType) == true) {
 				// update a exist task in system.
-				MSUTask msuTask = buildMSUTask(messageContent);
+				MsuTask msuTask = buildMSUTask(messageContent);
 				if (msuTask == null) {
 					theLogger.error("errorTaskJSONFormat", messageContent);
 					throw new PlatformException("errorTaskJSONFormat " + messageContent);
@@ -81,7 +81,7 @@ public class ManageTaskBeaconInterface extends HttpServer {
 				_metricsScheduleUnitService._taskCoreService.updateMSUTask(msuTask);
 			} else if ("TOPIC-TASK-REMOVE".equalsIgnoreCase(managementOperationType) == true) {
 				// remove the task from system.
-				MSUTask msuTask = buildMSUTask(messageContent);
+				MsuTask msuTask = buildMSUTask(messageContent);
 				if (msuTask == null) {
 					theLogger.error("errorTaskJSONFormat", messageContent);
 					throw new PlatformException("errorTaskJSONFormat " + messageContent);
@@ -142,22 +142,24 @@ public class ManageTaskBeaconInterface extends HttpServer {
 	 * @return
 	 * @throws Exception
 	 */
-	final private MSUTask buildMSUTask(String content) throws Exception {
+	final private MsuTask buildMSUTask(String content) throws Exception {
 		if (Assert.isEmptyString(content) == true) {
 			return null;
 		}
 		JSONObject contentObj = new JSONObject(content);
-		MSUTask task = new MSUTask();
+		MsuTask task = new MsuTask();
 
-		task.setID(contentObj.getString(MSUTask.ID_TITLE));
-		task.setRegion(contentObj.getString(MSUTask.REGION_TITLE));
-		task.setCreateAt(contentObj.getLong(MSUTask.CREATE_AT_TITLE));
-		task.setSchedule(contentObj.getString(MSUTask.SCHEDULE_TITLE));
-		task.setOperation(contentObj.getString(MSUTask.OPERATION_TITLE));
-		task.setMetaData(contentObj.getString(MSUTask.META_DATA_TITLE));
-		task.setContent(contentObj.getString(MSUTask.CONTENT_TITLE));
-		task.setResID(contentObj.getLong(MSUTask.RES_ID_TITLE));
-		task.setRealtime(contentObj.getBoolean(MSUTask.IS_REALTIME_TITLE));
+		task.setId(contentObj.getString(MsuTask.ID_TITLE));
+		task.setRegion(contentObj.getString(MsuTask.REGION_TITLE));
+		task.setCreateAt(contentObj.getLong(MsuTask.CREATE_AT_TITLE));
+		task.setSchedule(contentObj.getString(MsuTask.SCHEDULE_TITLE));
+		task.setOperation(contentObj.getString(MsuTask.OPERATION_TITLE));
+		task.setTargetIp(contentObj.getString(MsuTask.TARGET_IP_TITLE));
+		task.setTargetPort(contentObj.getInt(MsuTask.TARGET_PORT_TITLE));
+		task.setMetaData(contentObj.getString(MsuTask.META_DATA_TITLE));
+		task.setContent(contentObj.getString(MsuTask.CONTENT_TITLE));
+		task.setResId(contentObj.getLong(MsuTask.RES_ID_TITLE));
+		task.setIsRealtime(contentObj.getBoolean(MsuTask.IS_REALTIME_TITLE));
 
 		return task;
 	}

@@ -23,7 +23,7 @@ import com.secpro.platform.monitoring.schedule.task.TaskUtil;
 public class RegionTaskStack implements IService {
 	public String _region = "HB";
 	// key:Task ID, Value: Task Content
-	private HashMap<String, MSUTask> _regionTaskMap = new HashMap<String, MSUTask>();
+	private HashMap<String, MsuTask> _regionTaskMap = new HashMap<String, MsuTask>();
 
 	@Override
 	public void start() throws Exception {
@@ -39,15 +39,15 @@ public class RegionTaskStack implements IService {
 	 * 
 	 * @param msuTask
 	 */
-	public MSUTask putMSUTask(MSUTask msuTask) throws Exception {
-		if (msuTask == null || Assert.isEmptyString(msuTask.getID()) == true) {
+	public MsuTask putMSUTask(MsuTask msuTask) throws Exception {
+		if (msuTask == null || Assert.isEmptyString(msuTask.getId()) == true) {
 			return null;
 		}
 		synchronized (_regionTaskMap) {
-			if (_regionTaskMap.containsKey(msuTask.getID()) == false) {
-				this._regionTaskMap.put(msuTask.getID(), msuTask);
+			if (_regionTaskMap.containsKey(msuTask.getId()) == false) {
+				this._regionTaskMap.put(msuTask.getId(), msuTask);
 			} else {
-				throw new Exception(msuTask.getID() + " is already in Stack.");
+				throw new Exception(msuTask.getId() + " is already in Stack.");
 			}
 		}
 		return msuTask;
@@ -58,13 +58,13 @@ public class RegionTaskStack implements IService {
 	 * 
 	 * @param taskList
 	 */
-	public void putTasks(ArrayList<MSUTask> msuTaskList) {
+	public void putTasks(ArrayList<MsuTask> msuTaskList) {
 		if (Assert.isEmptyCollection(msuTaskList) == true) {
 			return;
 		}
 		synchronized (_regionTaskMap) {
 			for (int i = 0; i < msuTaskList.size(); i++) {
-				this._regionTaskMap.put(msuTaskList.get(i).getID(), msuTaskList.get(i));
+				this._regionTaskMap.put(msuTaskList.get(i).getId(), msuTaskList.get(i));
 			}
 		}
 	}
@@ -73,7 +73,7 @@ public class RegionTaskStack implements IService {
 	 * @param num
 	 * @return get task by request number.
 	 */
-	public MSUTask findMSUTask(String taskID) {
+	public MsuTask findMSUTask(String taskID) {
 		if (Assert.isEmptyString(taskID) == true) {
 			return null;
 		}
@@ -86,7 +86,7 @@ public class RegionTaskStack implements IService {
 	 * @param taskID
 	 * @return
 	 */
-	public MSUTask removeMUSTask(String taskID) {
+	public MsuTask removeMUSTask(String taskID) {
 		if (Assert.isEmptyString(taskID) == true) {
 			return null;
 		}
@@ -101,12 +101,12 @@ public class RegionTaskStack implements IService {
 	 * @param taskID
 	 * @return
 	 */
-	public MSUTask updateMUSTask(MSUTask msuTask) {
+	public MsuTask updateMUSTask(MsuTask msuTask) {
 		if (msuTask == null) {
 			return null;
 		}
 		synchronized (_regionTaskMap) {
-			this._regionTaskMap.put(msuTask.getID(), msuTask);
+			this._regionTaskMap.put(msuTask.getId(), msuTask);
 		}
 		return msuTask;
 	}
@@ -122,7 +122,7 @@ public class RegionTaskStack implements IService {
 
 	public HashMap<String, List<MSUSchedule>> nextHourSchedule(Date currentPoint) {
 		String taskID = null;
-		MSUTask taskObj = null;
+		MsuTask taskObj = null;
 		long currentTime = currentPoint.getTime();
 		HashMap<String, List<MSUSchedule>> scheduleMap = new HashMap<String, List<MSUSchedule>>();
 		for (Iterator<String> taskIter = _regionTaskMap.keySet().iterator(); taskIter.hasNext();) {

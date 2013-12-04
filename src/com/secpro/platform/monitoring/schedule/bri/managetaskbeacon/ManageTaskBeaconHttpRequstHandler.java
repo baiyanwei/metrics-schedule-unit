@@ -1,6 +1,5 @@
 package com.secpro.platform.monitoring.schedule.bri.managetaskbeacon;
 
-
 import javax.xml.bind.annotation.XmlElement;
 
 import org.jboss.netty.handler.codec.http.HttpRequest;
@@ -9,6 +8,7 @@ import com.secpro.platform.api.server.IHttpRequestHandler;
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.bri.ManageTaskBeaconInterface;
+import com.secpro.platform.monitoring.schedule.node.InterfaceParameter;
 
 /**
  * @author baiyanwei Sep 24, 2013
@@ -67,7 +67,7 @@ public class ManageTaskBeaconHttpRequstHandler implements IHttpRequestHandler {
 			_manageTaskBeaconInterface = ServiceHelper.findService(ManageTaskBeaconInterface.class);
 		}
 		try {
-			String operationType = request.getHeader(ManageTaskBeaconInterface.OPERATION_TYPE);
+			String operationType = request.getHeader(InterfaceParameter.ManagementParameter.OPERATION_TYPE);
 			return _manageTaskBeaconInterface.messageAdapter(operationType, messageObj.toString());
 		} catch (Exception e) {
 			theLogger.exception(e);

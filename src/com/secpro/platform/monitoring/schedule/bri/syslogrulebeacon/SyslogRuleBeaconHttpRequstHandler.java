@@ -8,8 +8,10 @@ import org.jboss.netty.handler.codec.http.HttpRequest;
 
 import com.secpro.platform.api.server.IHttpRequestHandler;
 import com.secpro.platform.core.services.ServiceHelper;
+import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.bri.SyslogRuleBeaconInterface;
+import com.secpro.platform.monitoring.schedule.node.InterfaceParameter;
 
 /**
  * @author baiyanwei Sep 24, 2013
@@ -68,10 +70,23 @@ public class SyslogRuleBeaconHttpRequstHandler implements IHttpRequestHandler {
 			_syslogRuleBeaconInterface = ServiceHelper.findService(SyslogRuleBeaconInterface.class);
 		}
 		try {
-			String region = request.getHeader(SyslogRuleBeaconInterface.REGION);
-			String mca = request.getHeader(SyslogRuleBeaconInterface.MCA);
-			String pushPath = request.getHeader(SyslogRuleBeaconInterface.PUSH_URL);
-			return _syslogRuleBeaconInterface.fetchSysLogRule(region, mca, new URI(pushPath));
+			// TODO MCA need to change and fill this header parameter.
+			String region = request.getHeader(InterfaceParameter.HttpHeaderParameter.REGION);
+			if (Assert.isEmptyString(region) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.REGION);
+			}
+			//
+			String mcaName = request.getHeader(InterfaceParameter.HttpHeaderParameter.MCA_NAME);
+			if (Assert.isEmptyString(mcaName) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.MCA_NAME);
+			}
+			//
+			String pushPath = request.getHeader(InterfaceParameter.HttpHeaderParameter.SYSLOG_RULE_PUSH_URL);
+			if (Assert.isEmptyString(pushPath) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.SYSLOG_RULE_PUSH_URL);
+			}
+			//
+			return _syslogRuleBeaconInterface.fetchSysLogRule(region, mcaName, new URI(pushPath));
 		} catch (Exception e) {
 			theLogger.exception(e);
 			throw e;

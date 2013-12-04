@@ -10,6 +10,7 @@ import java.security.Key;
 import java.security.KeyFactory;
 import java.security.spec.X509EncodedKeySpec;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
@@ -32,7 +33,7 @@ import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.Activator;
 import com.secpro.platform.monitoring.schedule.action.ScheduleAction;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
-import com.secpro.platform.monitoring.schedule.services.taskunit.MSUTask;
+import com.secpro.platform.monitoring.schedule.services.taskunit.MsuTask;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
 /**
@@ -169,25 +170,27 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	 * @param num
 	 * @return
 	 */
-	public String fetchScheduleByRequest(String region, String operations, int counter, String publicKey) throws Exception {
-		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operations) == true || Assert.isEmptyString(publicKey) == true || counter <= 0) {
+	public String fetchScheduleByRequest(String region, String operations, int counter, String fetcher, String publicKey) throws Exception {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operations) == true || Assert.isEmptyString(fetcher) == true || Assert.isEmptyString(publicKey) == true
+				|| counter <= 0) {
 			new Exception("invalid parameter");
 		}
 		List<MSUSchedule> scheduleList = _scheduleCoreService.nextNofetchingMSUSchedules(region, operations, counter);
 		//
 		JSONArray packageTaskArray = new JSONArray();
+		ArrayList<String[]> updateScheduleList = new ArrayList<String[]>();
+		long fetchAt = System.currentTimeMillis();
 		for (int i = 0; i < scheduleList.size(); i++) {
 			String taskContent = packageMSUTaskContent(null, scheduleList.get(i));
 			if (Assert.isEmptyString(taskContent) == true) {
 				continue;
 			}
+			// scheduleID,fetching time, fetcher.
+			updateScheduleList.add(new String[] { scheduleList.get(i).getScheduleID(), String.valueOf(fetchAt), fetcher });
 			packageTaskArray.put(taskContent);
 		}
-		if (Assert.isEmptyString(publicKey) == true) {
-			return packageTaskArray.toString();
-		} else {
-			return encryptContent(packageTaskArray.toString(), publicKey);
-		}
+		this._scheduleCoreService.updateScheduleStatus(updateScheduleList);
+		return encryptContent(packageTaskArray.toString(), publicKey);
 	}
 
 	private String encryptContent(String content, String publicKey) {
@@ -196,12 +199,15 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	}
 
 	@SuppressWarnings("static-access")
-	private String packageMSUTaskContent(MSUTask msuTask, MSUSchedule msuSchedule) {
+	private String packageMSUTaskContent(MsuTask msuTask, MSUSchedule msuSchedule) {
 		if (msuTask == null || msuSchedule == null) {
 			return null;
 		}
-		return messageFormatters.get("msu-task").format(msuTask.getID(), msuSchedule.getScheduleID(), msuTask.getRegion(), msuTask.getOperation(),
-				String.valueOf(msuTask.getCreateAt()), String.valueOf(msuSchedule.getSchedulePoint()), msuTask.getResID(), msuTask.getContent(), msuTask.getMetaData());
+		// '{'"tid":"{0}","sid": "{1}","reg": "{2}","ope":
+		// "{3}","cat":"{4}","sat":"{5}","tip":"{6}","tpt":"{7}","con":'{8}',"mda":'{9}''}'
+		return messageFormatters.get("msu-task").format(msuTask.getId(), msuSchedule.getScheduleID(), msuTask.getRegion(), msuTask.getOperation(),
+				String.valueOf(msuTask.getCreateAt()), String.valueOf(msuSchedule.getSchedulePoint()), msuTask.getTargetIp(), String.valueOf(msuTask.getTargetPort()),
+				msuTask.getContent(), msuTask.getMetaData());
 	}
 
 	/**

@@ -21,7 +21,7 @@ import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
 import com.secpro.platform.monitoring.schedule.services.syslogruleunit.MSUSysLogStandardRule;
-import com.secpro.platform.monitoring.schedule.services.taskunit.MSUTask;
+import com.secpro.platform.monitoring.schedule.services.taskunit.MsuTask;
 import com.secpro.platform.storage.services.DataBaseStorageService;
 
 /**
@@ -35,9 +35,9 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	//
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(DataBaseStorageAdapter.class);
 	// field
-	final private static String msuScheduleField = "TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION";
+	final private static String msuScheduleField = "TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION";
 	// field
-	final private static String msuTaskField = "ID,REGION,CREATE_AT,SCHEDULE,OPERATION,CONTENT,META_DATA,RES_ID,IS_REALTIME";
+	final private static String msuTaskField = "ID,REGION,CREATE_AT,SCHEDULE,OPERATION,TARGET_IP,TARGET_PORT,CONTENT,META_DATA,RES_ID,IS_REALTIME";
 	// field for SYSLOG standard rule.
 	final private static String msuSysLogStandardRuleField = "ID,RULE_KEY,RULE_VALUE,CHECK_NUM,CHECK_ACTION,TYPE_CODE";
 	//
@@ -86,9 +86,9 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		// EXECUTE_DESCRIPTION VARCHAR2(50)
 		// )
 		StringBuffer insertSQL = new StringBuffer();
-		// TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,FETCH_AT,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION
+		// TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION
 		insertSQL
-				.append("INSERT INTO MSU_SCHEDULE (TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION) VALUES(");
+				.append("INSERT INTO MSU_SCHEDULE (TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION) VALUES(");
 		insertSQL.append("'").append(taskSchedule.getTaskID()).append("',");
 		insertSQL.append("'").append(taskSchedule.getScheduleID()).append("',");
 		insertSQL.append(taskSchedule.getSchedulePoint()).append(",");
@@ -96,12 +96,61 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		insertSQL.append("'").append(taskSchedule.getRegion()).append("',");
 		insertSQL.append("'").append(taskSchedule.getOperation()).append("',");
 		insertSQL.append(taskSchedule.getFetchAt()).append(",");
+		insertSQL.append("'").append(taskSchedule.getFetchBy()).append("',");
 		insertSQL.append(taskSchedule.getExecuteAt()).append(",");
 		insertSQL.append(taskSchedule.getExecuteCost()).append(",");
 		insertSQL.append(taskSchedule.getExecuteStatus()).append(",");
 		insertSQL.append("'").append(taskSchedule.getExecuteDescription()).append("'");
 		insertSQL.append(")");
 		return updateRecords(insertSQL.toString());
+	}
+
+	public void insertSchedules(List<MSUSchedule> taskScheduleList) {
+		if (Assert.isEmptyCollection(taskScheduleList) == true) {
+			return;
+		}
+		// CREATE TABLE MSU_SCHEDULE
+		// (
+		// TASK_ID VARCHAR2(50) NOT NULL,
+		// SCHEDULE_ID VARCHAR2(50) NOT NULL,
+		// SCHEDULE_POINT NUMBER(20) NOT NULL,
+		// CREATE_AT NUMBER(20) NOT NULL,
+		// REGION VARCHAR2(50) NOT NULL,
+		// OPERATION VARCHAR2(50) NOT NULL,
+		// FETCH_AT NUMBER(20),
+		// EXECUTE_AT NUMBER(20),
+		// EXECUTE_COST NUMBER(20),
+		// EXECUTE_STATUS NUMBER(1),
+		// EXECUTE_DESCRIPTION VARCHAR2(50)
+		// )
+		ArrayList<String> batchList = new ArrayList<String>();
+		StringBuffer insertSQL = new StringBuffer();
+		MSUSchedule taskSchedule = null;
+		for (int i = 0; i < taskScheduleList.size(); i++) {
+			taskSchedule = taskScheduleList.get(i);
+			if (taskSchedule == null) {
+				continue;
+			}
+			// TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION
+			insertSQL
+					.append("INSERT INTO MSU_SCHEDULE (TASK_ID,SCHEDULE_ID,SCHEDULE_POINT,CREATE_AT,REGION,OPERATION,FETCH_AT,FETCH_BY,EXECUTE_AT,EXECUTE_COST,EXECUTE_STATUS,EXECUTE_DESCRIPTION) VALUES(");
+			insertSQL.append("'").append(taskSchedule.getTaskID()).append("',");
+			insertSQL.append("'").append(taskSchedule.getScheduleID()).append("',");
+			insertSQL.append(taskSchedule.getSchedulePoint()).append(",");
+			insertSQL.append(taskSchedule.getCreateAt()).append(",");
+			insertSQL.append("'").append(taskSchedule.getRegion()).append("',");
+			insertSQL.append("'").append(taskSchedule.getOperation()).append("',");
+			insertSQL.append(taskSchedule.getFetchAt()).append(",");
+			insertSQL.append("'").append(taskSchedule.getFetchBy()).append("',");
+			insertSQL.append(taskSchedule.getExecuteAt()).append(",");
+			insertSQL.append(taskSchedule.getExecuteCost()).append(",");
+			insertSQL.append(taskSchedule.getExecuteStatus()).append(",");
+			insertSQL.append("'").append(taskSchedule.getExecuteDescription()).append("'");
+			insertSQL.append(")");
+			batchList.add(insertSQL.toString());
+			insertSQL.setLength(0);
+		}
+		updateRecordsBatch(batchList);
 	}
 
 	/**
@@ -132,6 +181,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		updateSQL.append("UPDATE MSU_SCHEDULE SET ");
 		updateSQL.append("SCHEDULE_POINT=").append(taskSchedule.getSchedulePoint()).append(",");
 		updateSQL.append("FETCH_AT=").append(taskSchedule.getFetchAt()).append(",");
+		updateSQL.append("FETCH_BY=").append(taskSchedule.getFetchBy()).append(",");
 		updateSQL.append("EXECUTE_AT=").append(taskSchedule.getExecuteAt()).append(",");
 		updateSQL.append("EXECUTE_COST=").append(taskSchedule.getExecuteCost()).append(",");
 		updateSQL.append("EXECUTE_STATUS=").append(taskSchedule.getExecuteStatus()).append(",");
@@ -192,45 +242,8 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		}
 		StringBuffer removeSQL = new StringBuffer();
 		// index on TASK_ID AND SCHEDULE_ID
-		removeSQL.append("DELETE FROM MSU_SCHEDULE WHERE TASK_ID='").append(taskSchedule.getTaskID()).append("' AND SCHEDULE_ID='").append(taskSchedule.getScheduleID())
-				.append("'");
+		removeSQL.append("DELETE FROM MSU_SCHEDULE WHERE SCHEDULE_ID='").append(taskSchedule.getScheduleID()).append("'");
 		return updateRecords(removeSQL.toString());
-	}
-
-	/**
-	 * Store the task content into DB.
-	 * 
-	 * @param taskObj
-	 */
-	public int insertTask(MSUTask task) {
-		if (task == null) {
-			return 0;
-		}
-		StringBuffer insertSQL = new StringBuffer();
-		//
-		// CREATE TABLE MSU_TASK (
-		// ID VARCHAR2(50) NOT NULL,
-		// REGION VARCHAR2(50) NOT NULL,
-		// CREATE_AT NUMBER(20) NOT NULL,
-		// SCHEDULE VARCHAR2(255),
-		// OPERATION VARCHAR2(50) NOT NULL,
-		// META_DATA VARCHAR2(500),
-		// CONTENT VARCHAR2(1000),
-		// RES_ID NUMBER(20) NOT NULL,
-		// IS_REALTIME NUMBER(1) DEFAULT 1
-		// )
-		insertSQL.append("INSERT INTO MSU_TASK (ID,REGION,CREATE_AT,SCHEDULE,OPERATION,META_DATA,CONTENT,RES_ID,IS_REALTIME) VALUES(");
-		insertSQL.append("'").append(task.getID()).append("',");
-		insertSQL.append("'").append(task.getRegion()).append("',");
-		insertSQL.append(task.getCreateAt()).append(",");
-		insertSQL.append("'").append(task.getSchedule()).append("',");
-		insertSQL.append("'").append(task.getOperation()).append("',");
-		insertSQL.append("'").append(task.getMetaData()).append("',");
-		insertSQL.append("'").append(task.getContent()).append("',");
-		insertSQL.append(task.getResID()).append(",");
-		insertSQL.append(task.isRealtime());
-		insertSQL.append(")");
-		return updateRecords(insertSQL.toString());
 	}
 
 	/**
@@ -238,7 +251,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	 * 
 	 * @param taskObj
 	 */
-	public int updateTask(MSUTask task) {
+	public int updateTask(MsuTask task) {
 		if (task == null) {
 			return 0;
 		}
@@ -250,8 +263,8 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		updateSQL.append("OPERATION='").append(task.getOperation()).append("',");
 		updateSQL.append("META_DATA='").append(task.getMetaData()).append("',");
 		updateSQL.append("CONTENT='").append(task.getContent()).append("',");
-		updateSQL.append("RES_ID=").append(task.getResID());
-		updateSQL.append(" WHERE ID='").append(task.getID()).append("'");
+		updateSQL.append("RES_ID=").append(task.getResId());
+		updateSQL.append(" WHERE ID='").append(task.getId()).append("'");
 		return updateRecords(updateSQL.toString());
 	}
 
@@ -271,22 +284,6 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		}
 		updateSQL.append(" WHERE TASK_ID='").append(taskID).append("'");
 		return updateRecords(updateSQL.toString());
-	}
-
-	/**
-	 * remove the task
-	 * 
-	 * @param task
-	 * @return
-	 */
-	public int removeTask(MSUTask task) {
-		if (task == null) {
-			return 0;
-		}
-		StringBuffer removeSQL = new StringBuffer();
-		// ID,REGION,CREATE_AT,SCHEDULE,OPERATION,META_DATA,CONTENT,RES_ID,IS_REALTIME
-		removeSQL.append("DELETE FROM MSU_TASK WHERE ID='").append(task.getID()).append("'");
-		return updateRecords(removeSQL.toString());
 	}
 
 	/**
@@ -315,7 +312,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	 * @param regions
 	 * @return
 	 */
-	public List<MSUTask> queryAllFrequencyTask() {
+	public List<MsuTask> queryAllFrequencyTask() {
 		StringBuffer regionSQL = new StringBuffer();
 		regionSQL.append("select ");
 		regionSQL.append(msuTaskField);
@@ -324,14 +321,14 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		//
 		List<Object[]> rowData = selectRecords(regionSQL.toString());
 		//
-		List<MSUTask> taskList = new ArrayList<MSUTask>();
+		List<MsuTask> taskList = new ArrayList<MsuTask>();
 		if (rowData == null || rowData.isEmpty() == true) {
 			return taskList;
 		}
 		//
 		for (int i = 0; i < rowData.size(); i++) {
 			try {
-				MSUTask task = buildMSUTask(rowData.get(i));
+				MsuTask task = buildMSUTask(rowData.get(i));
 				if (task == null) {
 					continue;
 				}
@@ -459,7 +456,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 			while (resultSet.next()) {
 				Object[] rowData = new Object[resultSet.getMetaData().getColumnCount()];
 				for (int c = 0; c < resultSet.getMetaData().getColumnCount(); c++) {
-					rowData[c] = resultSet.getObject(c+1);
+					rowData[c] = resultSet.getObject(c + 1);
 				}
 				resulteData.add(rowData);
 			}
@@ -521,6 +518,51 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	}
 
 	/**
+	 * execute insert update delete in batch.
+	 * 
+	 * @param updateSQLList
+	 */
+	public void updateRecordsBatch(ArrayList<String> updateSQLList) {
+		if (Assert.isEmptyCollection(updateSQLList) == true) {
+			return;
+		}
+		//
+		Connection conn = null;
+		Statement statment = null;
+		boolean isAutoCommit = true;
+		try {
+			conn = _dataBaseStorageService.getConnection();
+			isAutoCommit = conn.getAutoCommit();
+			conn.setAutoCommit(false);
+			statment = conn.createStatement();
+			for (int i = 0; i < updateSQLList.size(); i++) {
+				if (Assert.isEmptyString(updateSQLList.get(i)) == true) {
+					continue;
+				}
+				statment.addBatch(updateSQLList.get(i));
+			}
+			statment.executeBatch();
+			conn.commit();
+		} catch (SQLException e) {
+			theLogger.exception(e);
+		} finally {
+			if (statment != null) {
+				try {
+					statment.close();
+				} catch (SQLException e) {
+				}
+			}
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(isAutoCommit);
+					conn.close();
+				} catch (SQLException e) {
+				}
+			}
+		}
+	}
+
+	/**
 	 * translate object to SQL value like 'Object' or Object
 	 * 
 	 * @param val
@@ -545,7 +587,7 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	 * @throws Exception
 	 */
 	final private MSUSchedule buildMSUSchedule(Object[] data) throws Exception {
-		if (data == null || data.length != 11) {
+		if (data == null || data.length != 12) {
 			return null;
 		}
 		MSUSchedule schedule = new MSUSchedule();
@@ -571,10 +613,11 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 			schedule.setRegion((String) data[4]);
 			schedule.setOperation((String) data[5]);
 			schedule.setFetchAt((Long) data[6]);
-			schedule.setExecuteAt((Long) data[7]);
-			schedule.setExecuteCost((Long) data[8]);
-			schedule.setExecuteStatus((Long) data[9]);
-			schedule.setExecuteDescription((String) data[10]);
+			schedule.setFetchAt((Long) data[7]);
+			schedule.setExecuteAt((Long) data[8]);
+			schedule.setExecuteCost((Long) data[9]);
+			schedule.setExecuteStatus((Long) data[10]);
+			schedule.setExecuteDescription((String) data[11]);
 		} catch (Exception e) {
 			throw e;
 		}
@@ -588,35 +631,35 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 	 * @return
 	 * @throws Exception
 	 */
-	final private MSUTask buildMSUTask(Object[] data) throws Exception {
-		if (data == null || data.length != 9) {
+	final private MsuTask buildMSUTask(Object[] data) throws Exception {
+		if (data == null || data.length != 11) {
 			return null;
 		}
-		MSUTask task = new MSUTask();
-		//
-		// CREATE TABLE MSU_TASK (
+		MsuTask task = new MsuTask();
 		// ID VARCHAR2(50) NOT NULL,
 		// REGION VARCHAR2(50) NOT NULL,
 		// CREATE_AT NUMBER(20) NOT NULL,
-		// SCHEDULE VARCHAR2(255),
+		// SCHEDULE VARCHAR2(50) NOT NULL,
 		// OPERATION VARCHAR2(50) NOT NULL,
-		// META_DATA VARCHAR2(500),
-		// CONTENT VARCHAR2(1000),
+		// TARGET_IP VARCHAR2(50) NOT NULL,
+		// TARGET_PORT NUMBER(5) NOT NULL,
+		// CONTENT VARCHAR2(1000) NOT NULL,
+		// META_DATA VARCHAR2(500) NOT NULL,
 		// RES_ID NUMBER(20) NOT NULL,
 		// IS_REALTIME NUMBER(1) DEFAULT 1
-		// )
-		// )
 
 		try {
-			task.setID((String) data[0]);
+			task.setId((String) data[0]);
 			task.setRegion((String) data[1]);
-			task.setCreateAt((Long) data[1]);
-			task.setSchedule((String) data[1]);
-			task.setOperation((String) data[1]);
-			task.setMetaData((String) data[1]);
-			task.setContent((String) data[1]);
-			task.setResID((Long) data[1]);
-			task.setRealtime((Long) data[1] == 1 ? false : true);
+			task.setCreateAt((Long) data[2]);
+			task.setSchedule((String) data[3]);
+			task.setOperation((String) data[4]);
+			task.setTargetIp((String) data[5]);
+			task.setTargetPort((Integer) data[6]);
+			task.setContent((String) data[7]);
+			task.setMetaData((String) data[8]);
+			task.setResId((Long) data[9]);
+			task.setIsRealtime((Long) data[10] == 1 ? false : true);
 		} catch (Exception e) {
 			throw e;
 		}

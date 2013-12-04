@@ -14,10 +14,6 @@ import com.secpro.platform.monitoring.schedule.services.MetricsScheduleUnitServi
  *         into OSGI with no start and no property.
  */
 public class AgentTaskBeaconInterface extends HttpServer implements IService {
-	final public static String REGION = "r";
-	final public static String OPERATIONS = "o";
-	final public static String COUNT = "c";
-	final public static String PUBLIC_KEY = "pubk";
 
 	private MetricsScheduleUnitService _metricsScheduleUnitService = null;
 
@@ -40,14 +36,15 @@ public class AgentTaskBeaconInterface extends HttpServer implements IService {
 	 * @param requestParameterMap
 	 * @return
 	 */
-	public String fetchTask(String region, String operations, int counter, String publicKey) throws Exception {
-		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operations) == true || Assert.isEmptyString(publicKey) == true || counter <= 0) {
+	public String fetchTask(String region, String operations, int counter, String fetcher, String publicKey) throws Exception {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operations) == true || Assert.isEmptyString(fetcher) == true || Assert.isEmptyString(publicKey) == true
+				|| counter <= 0) {
 			new Exception("invalid parameter");
 		}
 		if (_metricsScheduleUnitService == null) {
 			_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
 		}
 		//
-		return _metricsScheduleUnitService.fetchScheduleByRequest(region, operations, counter, publicKey);
+		return _metricsScheduleUnitService.fetchScheduleByRequest(region, operations, counter, fetcher, publicKey);
 	}
 }

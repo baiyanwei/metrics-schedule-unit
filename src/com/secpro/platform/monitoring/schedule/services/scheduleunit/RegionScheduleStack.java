@@ -78,7 +78,7 @@ public class RegionScheduleStack implements ILife {
 		ArrayList<MSUSchedule> findList = new ArrayList<MSUSchedule>();
 		ArrayList<MSUSchedule> scheduleList = scheduleMap.get(operation);
 		for (int i = 0; i < scheduleList.size(); i++) {
-			if (taskID.equalsIgnoreCase(scheduleList.get(i)._taskID) == true) {
+			if (taskID.equalsIgnoreCase(scheduleList.get(i).getTaskID()) == true) {
 				findList.add(scheduleList.get(i));
 			}
 		}
@@ -204,11 +204,11 @@ public class RegionScheduleStack implements ILife {
 	/**
 	 * remove tasks by operation and ID.
 	 * 
-	 * @param id
+	 * @param taskID
 	 * @param operation
 	 */
-	public void removeSchedule(String id, String operation) {
-		if (Assert.isEmptyString(id) == true || Assert.isEmptyString(operation) == true) {
+	public void removeSchedule(String taskID, String operation) {
+		if (Assert.isEmptyString(taskID) == true || Assert.isEmptyString(operation) == true) {
 			return;
 		}
 
@@ -218,7 +218,7 @@ public class RegionScheduleStack implements ILife {
 			}
 			ArrayList<MSUSchedule> operationStack = _operationFrequencyScheduleMap.get(operation);
 			for (int i = 0; i < operationStack.size(); i++) {
-				if (id.equalsIgnoreCase(operationStack.get(i)._taskID) == true) {
+				if (taskID.equalsIgnoreCase(operationStack.get(i).getTaskID()) == true) {
 					operationStack.remove(i);
 					i--;
 				}

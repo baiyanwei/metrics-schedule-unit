@@ -16,6 +16,7 @@ import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
+import com.secpro.platform.monitoring.schedule.action.UpdateScheduleStatusAction;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.RegionScheduleStack;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
@@ -31,8 +32,13 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	//
 	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=ScheduleCoreService")
 	public String _jmxObjectName = "secpro.msu:type=ScheduleCoreService";
+
+	@XmlElement(name = "updateSizeBatchSize", type = Integer.class, defaultValue = "100")
+	public int _updateSizeBatchSize = 100;
 	//
 	private HashMap<String, RegionScheduleStack> _regionScheduleStackMap = new HashMap<String, RegionScheduleStack>();
+
+	private ArrayList<String[]> _waitToUpdateScheduleStatusList = new ArrayList<String[]>();
 
 	@Override
 	public void start() throws PlatformException {
@@ -148,6 +154,33 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 		return dataBaseStorageAdapter.querySchedulesNofetching(0, System.currentTimeMillis());
 	}
 
+	//
+	/**
+	 * @param statusList
+	 * 
+	 * update the schedule instance in batch.
+	 */
+	public void updateScheduleStatus(ArrayList<String[]> statusList) {
+		if (Assert.isEmptyCollection(statusList) == true) {
+			return;
+		}
+		if (statusList.size() >= _updateSizeBatchSize) {
+			UpdateScheduleStatusAction updateAction = new UpdateScheduleStatusAction(statusList);
+			updateAction.start();
+			return;
+		}
+		synchronized (_waitToUpdateScheduleStatusList) {
+			_waitToUpdateScheduleStatusList.addAll(statusList);
+			if (_waitToUpdateScheduleStatusList.size() >= _updateSizeBatchSize) {
+				ArrayList<String[]> updateList = new ArrayList<String[]>();
+				updateList.addAll(_waitToUpdateScheduleStatusList);
+				_waitToUpdateScheduleStatusList.clear();
+				UpdateScheduleStatusAction updateAction = new UpdateScheduleStatusAction(updateList);
+				updateAction.start();
+			}
+		}
+	}
+
 	/**
 	 * get Task Content by ID
 	 * 
@@ -248,5 +281,4 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 		}
 		return reportStr.toString();
 	}
-
 }

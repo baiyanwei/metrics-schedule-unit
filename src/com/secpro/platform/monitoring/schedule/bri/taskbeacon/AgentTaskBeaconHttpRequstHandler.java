@@ -6,8 +6,10 @@ import org.jboss.netty.handler.codec.http.HttpRequest;
 
 import com.secpro.platform.api.server.IHttpRequestHandler;
 import com.secpro.platform.core.services.ServiceHelper;
+import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.bri.AgentTaskBeaconInterface;
+import com.secpro.platform.monitoring.schedule.node.InterfaceParameter;
 
 /**
  * @author baiyanwei Sep 24, 2013
@@ -61,16 +63,38 @@ public class AgentTaskBeaconHttpRequstHandler implements IHttpRequestHandler {
 
 	@Override
 	public Object POST(HttpRequest request, Object messageObj) throws Exception {
-		//find the parameter in HTTP request header.
+		// find the parameter in HTTP request header.
 		if (_agentTaskBeaconInterface == null) {
 			_agentTaskBeaconInterface = ServiceHelper.findService(AgentTaskBeaconInterface.class);
 		}
 		try {
-			String region = request.getHeader(AgentTaskBeaconInterface.REGION);
-			String operations = request.getHeader(AgentTaskBeaconInterface.OPERATIONS);
-			int counter = Integer.parseInt(request.getHeader(AgentTaskBeaconInterface.COUNT));
-			String publicKey = request.getHeader(AgentTaskBeaconInterface.PUBLIC_KEY);
-			return _agentTaskBeaconInterface.fetchTask(region, operations, counter, publicKey);
+			// TODO ??MCA need to change and fill this header parameter.
+			String region = request.getHeader(InterfaceParameter.HttpHeaderParameter.REGION);
+			if (Assert.isEmptyString(region) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.REGION);
+			}
+			//
+			String operations = request.getHeader(InterfaceParameter.HttpHeaderParameter.OPERATIONS);
+			if (Assert.isEmptyString(operations) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.OPERATIONS);
+			}
+			//
+			int counter = Integer.parseInt(request.getHeader(InterfaceParameter.HttpHeaderParameter.COUNTER));
+			if (counter <= 0) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.COUNTER);
+			}
+			//
+			String publicKey = request.getHeader(InterfaceParameter.HttpHeaderParameter.PUBLIC_KEY);
+			if (Assert.isEmptyString(publicKey) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.PUBLIC_KEY);
+			}
+			//
+			String mcaName = request.getHeader(InterfaceParameter.HttpHeaderParameter.MCA_NAME);
+			if (Assert.isEmptyString(mcaName) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.MCA_NAME);
+			}
+			//
+			return _agentTaskBeaconInterface.fetchTask(region, operations, counter, mcaName, publicKey);
 		} catch (Exception e) {
 			theLogger.exception(e);
 			throw e;

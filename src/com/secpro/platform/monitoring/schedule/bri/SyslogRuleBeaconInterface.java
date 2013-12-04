@@ -16,9 +16,6 @@ import com.secpro.platform.monitoring.schedule.services.MetricsSyslogRuleService
  *         register it into OSGI with no start and no property.
  */
 public class SyslogRuleBeaconInterface extends HttpServer implements IService {
-	final public static String REGION = "r";
-	final public static String MCA = "o";
-	final public static String PUSH_URL = "c";
 
 	private MetricsSyslogRuleService _metricsSyslogRuleService = null;
 
