@@ -608,15 +608,15 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		try {
 			schedule.setTaskID((String) data[0]);
 			schedule.setScheduleID((String) data[1]);
-			schedule.setSchedulePoint((Long) data[2]);
-			schedule.setCreateAt((Long) data[3]);
+			schedule.setSchedulePoint(((Number) data[2]).longValue());
+			schedule.setCreateAt(((Number) data[3]).longValue());
 			schedule.setRegion((String) data[4]);
 			schedule.setOperation((String) data[5]);
-			schedule.setFetchAt((Long) data[6]);
-			schedule.setFetchAt((Long) data[7]);
-			schedule.setExecuteAt((Long) data[8]);
-			schedule.setExecuteCost((Long) data[9]);
-			schedule.setExecuteStatus((Long) data[10]);
+			schedule.setFetchAt(((Number) data[6]).longValue());
+			schedule.setFetchAt(((Number) data[7]).longValue());
+			schedule.setExecuteAt(((Number) data[8]).longValue());
+			schedule.setExecuteCost(((Number) data[9]).longValue());
+			schedule.setExecuteStatus(((Number) data[10]).longValue());
 			schedule.setExecuteDescription((String) data[11]);
 		} catch (Exception e) {
 			throw e;
@@ -651,15 +651,15 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		try {
 			task.setId((String) data[0]);
 			task.setRegion((String) data[1]);
-			task.setCreateAt((Long) data[2]);
+			task.setCreateAt(((Number) data[2]).longValue());
 			task.setSchedule((String) data[3]);
 			task.setOperation((String) data[4]);
 			task.setTargetIp((String) data[5]);
-			task.setTargetPort((Integer) data[6]);
+			task.setTargetPort(((Number) data[6]).intValue());
 			task.setContent((String) data[7]);
 			task.setMetaData((String) data[8]);
-			task.setResId((Long) data[9]);
-			task.setIsRealtime((Long) data[10] == 1 ? false : true);
+			task.setResId(((Number) data[9]).longValue());
+			task.setIsRealtime(((Number) data[10]).intValue() == 1 ? false : true);
 		} catch (Exception e) {
 			throw e;
 		}
@@ -681,10 +681,10 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		// TYPE_CODE VARCHAR2(50) NOT NULL
 		// )
 		try {
-			msuSyslogRule.setRuleID((Long) data[0]);
+			msuSyslogRule.setRuleID(((Number) data[0]).longValue());
 			msuSyslogRule.setRuleKey((String) data[1]);
 			msuSyslogRule.setRuleValue((String) data[2]);
-			msuSyslogRule.setCheckNum((Long) data[3]);
+			msuSyslogRule.setCheckNum(((Number) data[3]).longValue());
 			msuSyslogRule.setCheckAction((String) data[4]);
 			msuSyslogRule.setTypeCode((String) data[5]);
 		} catch (Exception e) {

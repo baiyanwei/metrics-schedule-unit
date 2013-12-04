@@ -56,6 +56,12 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	// Logging Object
 	//
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(MetricsScheduleUnitService.class);
+	
+	private static HashMap<String, MessageFormat> messageFormatters = new HashMap<String, MessageFormat>();
+	private static String[] messageFiles = new String[] { "msu-task.js" };
+
+	// 最大加密明文大小
+	private static final int MAX_ENCRYPT_BLOCK = 117;
 	//
 	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=MetricsScheduleUnitService")
 	public String _jmxObjectName = "secpro.msu:type=MetricsScheduleUnitService";
@@ -74,15 +80,7 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	public ScheduleCoreService _scheduleCoreService = null;
 	//
 	private Timer _scheduleTimer = null;
-	private static HashMap<String, MessageFormat> messageFormatters = new HashMap<String, MessageFormat>();
-	private static String[] messageFiles = new String[] { "msu-task.js" };
 
-	// 最大加密明文大小
-	private static final int MAX_ENCRYPT_BLOCK = 117;
-
-	//
-	// We need to create the message formatters used in the workflow manager
-	//
 	static {
 		createMessageFormatters();
 	};
@@ -137,9 +135,9 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		_scheduleTimer = new Timer("MetricsScheduleUnitService._scheduleTimer");
 		// start on next hour 00:00
 		_scheduleTimer.schedule(new ScheduleAction(this), delayPoint, _scheduleTimerExecuteInterval);
-		// if (delayPoint > 60000) {
-		// new ScheduleAction(this).run();
-		// }
+		if (delayPoint > 60000) {
+			new ScheduleAction(this).run();
+		}
 	}
 
 	/**

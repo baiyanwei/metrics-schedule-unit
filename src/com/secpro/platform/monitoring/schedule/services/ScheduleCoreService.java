@@ -103,6 +103,22 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 
 	}
 
+	private RegionScheduleStack getOrCeateRegionScheduleStack(String region) {
+		if (Assert.isEmptyString(region) == true) {
+			return null;
+		}
+		synchronized (_regionScheduleStackMap) {
+			if (_regionScheduleStackMap.containsKey(region) == true) {
+				return _regionScheduleStackMap.get(region);
+			}
+			RegionScheduleStack regionScheduleStack = new RegionScheduleStack();
+			regionScheduleStack._region = region;
+			//
+			_regionScheduleStackMap.put(region, regionScheduleStack);
+			return regionScheduleStack;
+		}
+	}
+
 	/**
 	 * group the schedule by region operation.
 	 * 
@@ -158,7 +174,7 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	/**
 	 * @param statusList
 	 * 
-	 * update the schedule instance in batch.
+	 *            update the schedule instance in batch.
 	 */
 	public void updateScheduleStatus(ArrayList<String[]> statusList) {
 		if (Assert.isEmptyCollection(statusList) == true) {
@@ -233,7 +249,11 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	 * @return
 	 */
 	public void putMSUSchedule(MSUSchedule msuSchedule, boolean isRealTime) {
-		if (msuSchedule == null) {
+		if (msuSchedule == null || Assert.isEmptyString(msuSchedule.getRegion()) == true) {
+			return;
+		}
+		if (this._regionScheduleStackMap.containsKey(msuSchedule.getRegion()) == false) {
+			getOrCeateRegionScheduleStack(msuSchedule.getRegion()).putScheduleToBottom(msuSchedule.getOperation(), msuSchedule, isRealTime);
 			return;
 		}
 		this._regionScheduleStackMap.get(msuSchedule.getRegion()).putScheduleToBottom(msuSchedule.getOperation(), msuSchedule, isRealTime);
@@ -241,6 +261,10 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 
 	public void putMSUSchedules(String region, String operation, List<MSUSchedule> msuScheduleList, boolean isRealTime) {
 		if (Assert.isEmptyCollection(msuScheduleList) == true || Assert.isEmptyString(region) == true || Assert.isEmptyString(operation) == true) {
+			return;
+		}
+		if (this._regionScheduleStackMap.containsKey(region) == false) {
+			getOrCeateRegionScheduleStack(region).putSchedules(operation, msuScheduleList, isRealTime);
 			return;
 		}
 		this._regionScheduleStackMap.get(region).putSchedules(operation, msuScheduleList, isRealTime);
@@ -255,6 +279,9 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 	 */
 	public void removeMSUSchedule(String region, String taskID) {
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
+			return;
+		}
+		if (this._regionScheduleStackMap.containsKey(region) == false) {
 			return;
 		}
 		this._regionScheduleStackMap.get(region).removeSchedule(taskID);

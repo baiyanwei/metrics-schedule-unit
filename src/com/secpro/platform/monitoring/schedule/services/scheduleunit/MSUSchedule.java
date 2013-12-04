@@ -22,14 +22,14 @@ public class MSUSchedule {
 	// EXECUTE_COST NUMBER(20) Y 执行时长
 	// EXECUTE_STATUS NUMBER(1) Y 执行情况
 	// EXECUTE_DESCRIPTION VARCHAR2(50) Y 执行描述
-	private String taskID = null;
-	private String scheduleID = null;
+	private String taskID = "";
+	private String scheduleID = "";
 	private long schedulePoint = 0;
 	private long createAt = 0;
-	private String region = null;
-	private String operation = null;
+	private String region = "";
+	private String operation = "";
 	private long fetchAt = 0;
-	private String fetchBy = null;
+	private String fetchBy = "";
 	private long executeAt = 0;
 	private long executeCost = 0;
 	private long executeStatus = 0;

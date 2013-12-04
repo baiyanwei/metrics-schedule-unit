@@ -11,6 +11,7 @@ import org.quartz.CronExpression;
 
 import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.utils.Assert;
+import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
 import com.secpro.platform.monitoring.schedule.task.TaskUtil;
 
@@ -21,17 +22,20 @@ import com.secpro.platform.monitoring.schedule.task.TaskUtil;
  *         The task stack for each region.
  */
 public class RegionTaskStack implements IService {
+	final private static PlatformLogger theLogger = PlatformLogger.getLogger(RegionTaskStack.class);
+
 	public String _region = "HB";
 	// key:Task ID, Value: Task Content
 	private HashMap<String, MsuTask> _regionTaskMap = new HashMap<String, MsuTask>();
 
 	@Override
 	public void start() throws Exception {
+		theLogger.info("RegionTaskStack " + _region + "is started.");
 	}
 
 	@Override
 	public void stop() throws Exception {
-
+		theLogger.info("RegionTaskStack " + _region + "is stopped.");
 	}
 
 	/**
@@ -145,12 +149,11 @@ public class RegionTaskStack implements IService {
 					scheduleList.add(TaskUtil.createScheduleOnTime(taskObj, nextPoint, currentTime));
 				}
 			} catch (ParseException e) {
-				e.printStackTrace();
+				theLogger.exception(e);
 				continue;
 			}
 		}
 		return scheduleMap;
 	}
 
-	
 }
