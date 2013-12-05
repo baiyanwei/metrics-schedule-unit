@@ -4,12 +4,12 @@ import javax.xml.bind.annotation.XmlElement;
 
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
+import com.secpro.platform.api.client.InterfaceParameter;
 import com.secpro.platform.api.server.IHttpRequestHandler;
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.bri.AgentTaskBeaconInterface;
-import com.secpro.platform.monitoring.schedule.node.InterfaceParameter;
 
 /**
  * @author baiyanwei Sep 24, 2013

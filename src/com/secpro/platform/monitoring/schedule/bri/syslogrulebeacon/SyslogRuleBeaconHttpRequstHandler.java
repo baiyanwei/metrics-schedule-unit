@@ -6,12 +6,12 @@ import javax.xml.bind.annotation.XmlElement;
 
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
+import com.secpro.platform.api.client.InterfaceParameter;
 import com.secpro.platform.api.server.IHttpRequestHandler;
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.bri.SyslogRuleBeaconInterface;
-import com.secpro.platform.monitoring.schedule.node.InterfaceParameter;
 
 /**
  * @author baiyanwei Sep 24, 2013
@@ -81,12 +81,16 @@ public class SyslogRuleBeaconHttpRequstHandler implements IHttpRequestHandler {
 				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.MCA_NAME);
 			}
 			//
-			String pushPath = request.getHeader(InterfaceParameter.HttpHeaderParameter.SYSLOG_RULE_PUSH_URL);
-			if (Assert.isEmptyString(pushPath) == true) {
-				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.SYSLOG_RULE_PUSH_URL);
+			String pushPort = request.getHeader(InterfaceParameter.HttpHeaderParameter.SYSLOG_RULE_PUSH_PORT);
+			if (Assert.isEmptyString(pushPort) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.SYSLOG_RULE_PUSH_PORT);
+			}
+			String remoteAddressIp = request.getHeader(InterfaceParameter.HttpHeaderParameter.REMOTE_HOST_ADDR_IP);
+			if (Assert.isEmptyString(remoteAddressIp) == true) {
+				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.REMOTE_HOST_ADDR_IP);
 			}
 			//
-			return _syslogRuleBeaconInterface.fetchSysLogRule(region, mcaName, new URI(pushPath));
+			return _syslogRuleBeaconInterface.fetchSysLogRule(region, mcaName, new URI("http://" + remoteAddressIp + ":" + pushPort+"/"));
 		} catch (Exception e) {
 			theLogger.exception(e);
 			throw e;
