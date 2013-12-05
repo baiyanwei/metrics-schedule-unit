@@ -68,7 +68,7 @@ public class UpdateScheduleStatusAction extends Thread {
 				updateSQL.append("UPDATE MSU_SCHEDULE SET ");
 				updateSQL.append("FETCH_AT=").append(scheduleStatus[1]).append(",");
 				updateSQL.append("FETCH_BY='").append(scheduleStatus[2]).append("'");
-				updateSQL.append(" WHERE SCHEDULE_ID='").append(scheduleStatus[0]).equals("'");
+				updateSQL.append(" WHERE SCHEDULE_ID='").append(scheduleStatus[0]).append("'");
 				batchList.add(updateSQL.toString());
 				updateSQL.setLength(0);
 			}

@@ -242,7 +242,9 @@ public class ScheduleCoreService extends AbstractMetricMBean implements IService
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(operations) == true || num <= 0) {
 			return new ArrayList<MSUSchedule>();
 		}
-
+		if(this._regionScheduleStackMap.containsKey(region)==false){
+			return new ArrayList<MSUSchedule>();
+		}
 		return this._regionScheduleStackMap.get(region).nextSchedules(operations, num);
 	}
 

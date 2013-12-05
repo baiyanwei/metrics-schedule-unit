@@ -20,6 +20,8 @@ import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
@@ -32,6 +34,7 @@ import com.secpro.platform.core.utils.Utils;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.Activator;
 import com.secpro.platform.monitoring.schedule.action.ScheduleAction;
+import com.secpro.platform.monitoring.schedule.node.InterfaceParameter;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
 import com.secpro.platform.monitoring.schedule.services.taskunit.MsuTask;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
@@ -120,10 +123,10 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 
 		//
 		theLogger.info("starUp", _regionNameMap.keySet().toString());
-		
+
 		System.out.println(_scheduleCoreService.getEveryRegionScheduleSize());
 		System.out.println(_taskCoreService.getEveryRegionTaskSize());
-		
+
 	}
 
 	@Override
@@ -141,9 +144,9 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		// start on next hour 00:00
 		_scheduleTimer.schedule(new ScheduleAction(this), delayPoint, _scheduleTimerExecuteInterval);
 		// test
-		// if (delayPoint > 60000) {
-		// new ScheduleAction(this).run();
-		// }
+		if (delayPoint > 60000) {
+			new ScheduleAction(this).run();
+		}
 	}
 
 	/**
@@ -184,9 +187,12 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		JSONArray packageTaskArray = new JSONArray();
 		ArrayList<String[]> updateScheduleList = new ArrayList<String[]>();
 		long fetchAt = System.currentTimeMillis();
+		MsuTask msuTask = null;
+		JSONObject taskContent = null;
 		for (int i = 0; i < scheduleList.size(); i++) {
-			String taskContent = packageMSUTaskContent(null, scheduleList.get(i));
-			if (Assert.isEmptyString(taskContent) == true) {
+			msuTask = this._taskCoreService.getMSUTask(scheduleList.get(i).getRegion(), scheduleList.get(i).getTaskID());
+			taskContent = packageMSUTaskToJSON(msuTask, scheduleList.get(i), publicKey);
+			if (taskContent == null) {
 				continue;
 			}
 			// scheduleID,fetching time, fetcher.
@@ -194,24 +200,58 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 			packageTaskArray.put(taskContent);
 		}
 		this._scheduleCoreService.updateScheduleStatus(updateScheduleList);
-		return encryptContent(packageTaskArray.toString(), publicKey);
+		//System.out.println(">>>" + packageTaskArray.toString());
+		return packageTaskArray.toString();
 	}
 
-	private String encryptContent(String content, String publicKey) {
-		byte[] contentByte = encryptByPublicKey(content.getBytes(), publicKey);
-		return new String(contentByte);
+	private String encryptBASE64(byte[] bytes) {
+		return new String(Base64.encode(bytes));
 	}
 
-	@SuppressWarnings("static-access")
-	private String packageMSUTaskContent(MsuTask msuTask, MSUSchedule msuSchedule) {
+	private JSONObject packageMSUTaskToJSON(MsuTask msuTask, MSUSchedule msuSchedule, String publicKey) {
 		if (msuTask == null || msuSchedule == null) {
 			return null;
 		}
 		// '{'"tid":"{0}","sid": "{1}","reg": "{2}","ope":
 		// "{3}","cat":"{4}","sat":"{5}","tip":"{6}","tpt":"{7}","con":'{8}',"mda":'{9}''}'
-		return messageFormatters.get("msu-task").format(msuTask.getId(), msuSchedule.getScheduleID(), msuTask.getRegion(), msuTask.getOperation(),
-				String.valueOf(msuTask.getCreateAt()), String.valueOf(msuSchedule.getSchedulePoint()), msuTask.getTargetIp(), String.valueOf(msuTask.getTargetPort()),
-				msuTask.getContent(), msuTask.getMetaData());
+		JSONObject taskObj = new JSONObject();
+		try {
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_ID_PROPERTY_NAME, msuTask.getId());
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_SCHEDULE_ID_PROPERTY_NAME, msuSchedule.getScheduleID());
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_REGION_PROPERTY_NAME, msuTask.getRegion());
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_OPERATION_PROPERTY_NAME, msuTask.getOperation());
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_CREATED_AD_PROPERTY_NAME, String.valueOf(msuTask.getCreateAt()));
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_SCHEDULE_POINT_PROPERTY_NAME, String.valueOf(msuSchedule.getSchedulePoint()));
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_TARGET_IP_PROPERTY_NAME, msuTask.getTargetIp());
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_TARGET_PORT_PROPERTY_NAME, String.valueOf(msuTask.getTargetPort()));
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_CONTENT_PROPERTY_NAME, msuTask.getContent());
+			//
+			JSONObject metaObj = new JSONObject(msuTask.getMetaData());
+			String[] metaPPNames = JSONObject.getNames(metaObj);
+			if (metaPPNames != null && metaPPNames.length > 0) {
+				for (int i = 0; i < metaPPNames.length; i++) {
+					try {
+						String ppValue = metaObj.getString(metaPPNames[i]);
+						if (Assert.isEmptyString(ppValue) == true) {
+							continue;
+						}
+						String encryptStr = encryptBASE64(encryptByPublicKey(ppValue.getBytes(), publicKey));
+						//
+						if (Assert.isEmptyString(encryptStr) == true) {
+							continue;
+						}
+						metaObj.put(metaPPNames[i], encryptStr);
+					} catch (Exception e) {
+						theLogger.exception(e);
+					}
+				}
+			}
+			taskObj.put(InterfaceParameter.MonitoringTask.TASK_META_DATA_NAME, metaObj);
+		} catch (JSONException e) {
+			theLogger.exception(e);
+			return null;
+		}
+		return taskObj;
 	}
 
 	/**
