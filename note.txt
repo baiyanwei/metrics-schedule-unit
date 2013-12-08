@@ -1,3 +1,13 @@
+##{"mda":{"secret":"加密后字符串"}}
+
+"regexs":{Map<rule_key,rule_value>},"checkNum":"check_num","checkAction":"check_action","ip","127.0.0.1"
+
+
+
+
+
+
+
 3.3.4任务信息状态表
 需由任务模块填入除--任务执行时间（exeu_date），任务状态（status）的其他字段。
 并修改文档中status注释为--任务状态0：表示任务执行失败，1：表示任务执行成功，空代表任务未被执行。此字段由数据处理模块填入。
