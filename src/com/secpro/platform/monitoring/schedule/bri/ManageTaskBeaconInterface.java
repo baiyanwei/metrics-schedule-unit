@@ -4,13 +4,13 @@ import org.json.JSONObject;
 
 import com.secpro.platform.api.common.http.server.HttpServer;
 import com.secpro.platform.core.exception.PlatformException;
+import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.services.MetricsScheduleUnitService;
 import com.secpro.platform.monitoring.schedule.services.MetricsSyslogRuleService;
 import com.secpro.platform.monitoring.schedule.services.scheduleunit.MSUSchedule;
-import com.secpro.platform.monitoring.schedule.services.syslogruleunit.MSUSysLogStandardRule;
 import com.secpro.platform.monitoring.schedule.services.taskunit.MsuTask;
 import com.secpro.platform.monitoring.schedule.task.TaskUtil;
 
@@ -20,7 +20,7 @@ import com.secpro.platform.monitoring.schedule.task.TaskUtil;
  *         SysLog listenter
  * 
  */
-public class ManageTaskBeaconInterface extends HttpServer {
+public class ManageTaskBeaconInterface extends HttpServer implements IService {
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(ManageTaskBeaconInterface.class);
 
 	final public static String[] MANAGEMENT_OPERATION_TYPE = new String[] { "TOPIC-TASK-ADD", "TOPIC-TASK-UPDATE", "TOPIC-TASK-REMOVE", "TOPIC-SYSLOG-STANDARD-RULE-ADD",
@@ -42,11 +42,16 @@ public class ManageTaskBeaconInterface extends HttpServer {
 	}
 
 	public String messageAdapter(String managementOperationType, String messageContent) throws PlatformException {
-		System.out.println("Received message" + messageContent + "'");
+		System.out.println("Received message" + messageContent + "");
 		//
 		try {
-			// task add.
-			if ("TOPIC-TASK-ADD".equalsIgnoreCase(managementOperationType) == true) {
+			if ("TOPIC-REGION-RELOAD".equalsIgnoreCase(managementOperationType) == true) {
+				if (_metricsScheduleUnitService == null) {
+					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
+				}
+				_metricsScheduleUnitService.reloadTaskRegionMapping();
+				// task add.
+			} else if ("TOPIC-TASK-ADD".equalsIgnoreCase(managementOperationType) == true) {
 				MsuTask msuTask = buildMSUTask(messageContent);
 				if (msuTask == null) {
 					theLogger.error("errorTaskJSONFormat", messageContent);
@@ -81,50 +86,45 @@ public class ManageTaskBeaconInterface extends HttpServer {
 				_metricsScheduleUnitService._taskCoreService.updateMSUTask(msuTask);
 			} else if ("TOPIC-TASK-REMOVE".equalsIgnoreCase(managementOperationType) == true) {
 				// remove the task from system.
-				MsuTask msuTask = buildMSUTask(messageContent);
-				if (msuTask == null) {
-					theLogger.error("errorTaskJSONFormat", messageContent);
-					throw new PlatformException("errorTaskJSONFormat " + messageContent);
+				String[] taskIdArray = messageContent.split(",");
+				if (taskIdArray == null || taskIdArray.length == 0) {
+					theLogger.error("Can't find the remove targets in content:" + messageContent);
+					throw new PlatformException("Can't find the remove targets in content:" + messageContent);
 				}
 				if (_metricsScheduleUnitService == null) {
 					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
 				}
-				_metricsScheduleUnitService._taskCoreService.removeMSUTask(msuTask);
+				for (String taskID : taskIdArray) {
+					_metricsScheduleUnitService._taskCoreService.removeMSUTaskByTaskID(taskID);
+				}
 				//
-			} else if ("TOPIC-SYSLOG-STANDARD-RULE-ADD".equalsIgnoreCase(managementOperationType) == true) {
-				// add a SYSLOG standard rule and publish.
-				MSUSysLogStandardRule ruleObj = buildMSUSysLogStandardRule(messageContent);
-				if (ruleObj == null) {
-					theLogger.error("errorRuleJSONFormat", messageContent);
-					throw new PlatformException("errorRuleJSONFormat " + messageContent);
+			} else if ("TOPIC-SYSLOG-STANDARD-RULE-ADD".equalsIgnoreCase(managementOperationType) == true
+					|| "TOPIC-SYSLOG-STANDARD-RULE-UPDATE".equalsIgnoreCase(managementOperationType) == true) {
+				// add or update one group rule by typeCode
+				String typeCode = messageContent;
+				// MSUSysLogStandardRule ruleObj =
+				// buildMSUSysLogStandardRule(messageContent);
+				if (Assert.isEmptyString(typeCode) == true) {
+					theLogger.error("syslogTypeCodeEmpty");
+					throw new PlatformException("typeCode Exception ,typeCode is " + typeCode);
 				}
 				if (_metricsSyslogRuleService == null) {
 					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
 				}
-				_metricsSyslogRuleService.publishSysLogStandardRule(ruleObj);
-			} else if ("TOPIC-SYSLOG-STANDARD-RULE-UPDATE".equalsIgnoreCase(managementOperationType) == true) {
-				// update rule and republish.
-				MSUSysLogStandardRule ruleObj = buildMSUSysLogStandardRule(messageContent);
-				if (ruleObj == null) {
-					theLogger.error("errorRuleJSONFormat", messageContent);
-					throw new PlatformException("errorRuleJSONFormat " + messageContent);
-				}
-				if (_metricsSyslogRuleService == null) {
-					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
-				}
-				_metricsSyslogRuleService.publishSysLogStandardRule(ruleObj);
-				//
+				_metricsSyslogRuleService.publishSysLogStandardRule(typeCode);
 			} else if ("TOPIC-SYSLOG-STANDARD-RULE-REMOVE".equalsIgnoreCase(managementOperationType) == true) {
 				// remove the rule without publishing.
-				MSUSysLogStandardRule ruleObj = buildMSUSysLogStandardRule(messageContent);
-				if (ruleObj == null) {
-					theLogger.error("errorRuleJSONFormat", messageContent);
-					throw new PlatformException("errorRuleJSONFormat " + messageContent);
+				String typeCode = messageContent;
+				// MSUSysLogStandardRule ruleObj =
+				// buildMSUSysLogStandardRule(messageContent);
+				if (Assert.isEmptyString(typeCode) == true) {
+					theLogger.error("syslogTypeCodeEmpty");
+					throw new PlatformException("typeCode Exception ,typeCode is " + typeCode);
 				}
 				if (_metricsSyslogRuleService == null) {
 					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
 				}
-				_metricsSyslogRuleService.removeSysLogStandardRule(ruleObj);
+				_metricsSyslogRuleService.removeSysLogStandardRule(typeCode);
 			} else {
 				theLogger.error("invilad management operation message type.");
 			}
@@ -150,7 +150,13 @@ public class ManageTaskBeaconInterface extends HttpServer {
 		MsuTask task = new MsuTask();
 
 		task.setId(contentObj.getString(MsuTask.ID_TITLE));
-		task.setRegion(contentObj.getString(MsuTask.REGION_TITLE));
+		// replace the city_code in task_region.
+		String taskRegion = this._metricsScheduleUnitService.getTaskRegionByCityCode(contentObj.getString(MsuTask.REGION_TITLE));
+		if (Assert.isEmptyString(taskRegion) == false) {
+			task.setRegion(taskRegion);
+		} else {
+			task.setRegion(contentObj.getString(MsuTask.REGION_TITLE));
+		}
 		task.setCreateAt(contentObj.getLong(MsuTask.CREATE_AT_TITLE));
 		task.setSchedule(contentObj.getString(MsuTask.SCHEDULE_TITLE));
 		task.setOperation(contentObj.getString(MsuTask.OPERATION_TITLE));
@@ -164,20 +170,21 @@ public class ManageTaskBeaconInterface extends HttpServer {
 		return task;
 	}
 
-	final private MSUSysLogStandardRule buildMSUSysLogStandardRule(String content) throws Exception {
-		if (Assert.isEmptyString(content) == true) {
-			return null;
-		}
-		JSONObject contentObj = new JSONObject(content);
-		MSUSysLogStandardRule msuSyslogRule = new MSUSysLogStandardRule();
-		//
-		msuSyslogRule.setRuleID(contentObj.getLong(MSUSysLogStandardRule.RULE_ID_TITLE));
-		msuSyslogRule.setRuleKey(contentObj.getString(MSUSysLogStandardRule.RULE_KEY_TITLE));
-		msuSyslogRule.setRuleValue(contentObj.getString(MSUSysLogStandardRule.RULE_VALUE_TITLE));
-		msuSyslogRule.setCheckNum(contentObj.getLong(MSUSysLogStandardRule.RULE_CHECK_NUM_TITLE));
-		msuSyslogRule.setCheckAction(contentObj.getString(MSUSysLogStandardRule.RULE_CHECK_ACTION_TITLE));
-		msuSyslogRule.setTypeCode(contentObj.getString(MSUSysLogStandardRule.RULE_TYPE_CODE_TITLE));
-		//
-		return msuSyslogRule;
-	}
+	// final private MSUSysLogStandardRule buildMSUSysLogStandardRule(String
+	// content) throws Exception {
+	// if (Assert.isEmptyString(content) == true) {
+	// return null;
+	// }
+	// JSONObject contentObj = new JSONObject(content);
+	// MSUSysLogStandardRule msuSyslogRule = new MSUSysLogStandardRule();
+	// //
+	// msuSyslogRule.setRuleID(contentObj.getLong(MSUSysLogStandardRule.RULE_ID_TITLE));
+	// msuSyslogRule.setRuleKey(contentObj.getString(MSUSysLogStandardRule.RULE_KEY_TITLE));
+	// msuSyslogRule.setRuleValue(contentObj.getString(MSUSysLogStandardRule.RULE_VALUE_TITLE));
+	// msuSyslogRule.setCheckNum(contentObj.getLong(MSUSysLogStandardRule.RULE_CHECK_NUM_TITLE));
+	// msuSyslogRule.setCheckAction(contentObj.getString(MSUSysLogStandardRule.RULE_CHECK_ACTION_TITLE));
+	// msuSyslogRule.setTypeCode(contentObj.getString(MSUSysLogStandardRule.RULE_TYPE_CODE_TITLE));
+	// //
+	// return msuSyslogRule;
+	// }
 }

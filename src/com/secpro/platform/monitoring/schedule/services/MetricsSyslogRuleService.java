@@ -9,6 +9,8 @@ import java.util.List;
 import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
+import org.json.JSONArray;
+
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
 import com.secpro.platform.core.services.IService;
@@ -36,7 +38,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	public String _jmxObjectName = "secpro.msu:type=MetricsSyslogRuleService";
 	//
 	private HashMap<String, URI> _mcaPublishReferentMap = new HashMap<String, URI>();
-	private HashMap<Long, MSUSysLogStandardRule> _syslogStandardRuleMap = new HashMap<Long, MSUSysLogStandardRule>();
+	private HashMap<String, List<MSUSysLogStandardRule>> _syslogStandardRuleMap = new HashMap<String, List<MSUSysLogStandardRule>>();
 
 	@Override
 	public void start() throws PlatformException {
@@ -66,7 +68,14 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		// #2 group into cache.
 		synchronized (this._syslogStandardRuleMap) {
 			for (int i = 0; i < unfetchScheduleList.size(); i++) {
-				this._syslogStandardRuleMap.put(unfetchScheduleList.get(i).getRuleID(), unfetchScheduleList.get(i));
+				if (this._syslogStandardRuleMap.containsKey(unfetchScheduleList.get(i).getTypeCode()) == false) {
+					List<MSUSysLogStandardRule> typeList = new ArrayList<MSUSysLogStandardRule>();
+					typeList.add(unfetchScheduleList.get(i));
+					this._syslogStandardRuleMap.put(unfetchScheduleList.get(i).getTypeCode(), typeList);
+				} else {
+					List<MSUSysLogStandardRule> typeList = this._syslogStandardRuleMap.get(unfetchScheduleList.get(i).getTypeCode());
+					typeList.add(unfetchScheduleList.get(i));
+				}
 			}
 		}
 
@@ -109,22 +118,38 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param id
 	 * @param content
 	 */
-	public void publishSysLogStandardRule(MSUSysLogStandardRule newRule) {
-		if (newRule == null) {
+	public void publishSysLogStandardRule(String typeCode) {
+		if (Assert.isEmptyString(typeCode) == true) {
+			return;
+		}
+		List<MSUSysLogStandardRule> ruleList = loadMSUSysLogStandardRuleFromDB(typeCode);
+		if (Assert.isEmptyCollection(ruleList) == true) {
 			return;
 		}
 		synchronized (this._syslogStandardRuleMap) {
-			this._syslogStandardRuleMap.put(newRule.getRuleID(), newRule);
+			this._syslogStandardRuleMap.put(typeCode, ruleList);
 		}
+		JSONArray publishContentArray = fillAndBuildRulesMessage(ruleList, new JSONArray());
+		//
 		for (Iterator<String> keyIter = this._mcaPublishReferentMap.keySet().iterator(); keyIter.hasNext();) {
 			try {
-				publishSysLogStandardRuleToMCA(getSysLogRulesMessage(newRule), this._mcaPublishReferentMap.get(keyIter.next()));
+				publishSysLogStandardRuleToMCA(publishContentArray.toString(), this._mcaPublishReferentMap.get(keyIter.next()));
 			} catch (Exception e) {
 				theLogger.exception(e);
 				continue;
 			}
 		}
+	}
 
+	private List<MSUSysLogStandardRule> loadMSUSysLogStandardRuleFromDB(String typeCode) {
+		if (Assert.isEmptyString(typeCode) == true) {
+			return null;
+		}
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
+			return new ArrayList<MSUSysLogStandardRule>();
+		}
+		return dataBaseStorageAdapter.querySysLogStandardRuleByTypeCode(typeCode);
 	}
 
 	/**
@@ -133,12 +158,12 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param id
 	 * @param content
 	 */
-	public void removeSysLogStandardRule(MSUSysLogStandardRule ruleObj) {
-		if (ruleObj == null) {
+	public void removeSysLogStandardRule(String typeCode) {
+		if (Assert.isEmptyString(typeCode) == true) {
 			return;
 		}
 		synchronized (this._syslogStandardRuleMap) {
-			this._syslogStandardRuleMap.remove(ruleObj.getRuleID());
+			this._syslogStandardRuleMap.remove(typeCode);
 		}
 	}
 
@@ -159,21 +184,21 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @return
 	 */
 	private String getSysLogStandardRules() {
-		StringBuffer rules = new StringBuffer();
-		Long keyName = null;
-		for (Iterator<Long> keyIter = this._syslogStandardRuleMap.keySet().iterator(); keyIter.hasNext();) {
+		String keyName = null;
+		JSONArray allRullArray = new JSONArray();
+		for (Iterator<String> keyIter = this._syslogStandardRuleMap.keySet().iterator(); keyIter.hasNext();) {
 			keyName = keyIter.next();
-			rules.append(this._syslogStandardRuleMap.get(keyName));
+			fillAndBuildRulesMessage(this._syslogStandardRuleMap.get(keyName), allRullArray);
 		}
-		return (rules.length() == 0 ? "" : rules.toString());
+		return allRullArray.toString();
 	}
 
-	private String getSysLogRulesMessage(MSUSysLogStandardRule ruleObj) {
-		if (ruleObj == null) {
-			return "";
+	private JSONArray fillAndBuildRulesMessage(List<MSUSysLogStandardRule> ruleList, JSONArray typeRuleArray) {
+		if (ruleList == null || typeRuleArray == null) {
+			return null;
 		}
 		// TODO ??
-		return "";
+		return typeRuleArray;
 	}
 
 }

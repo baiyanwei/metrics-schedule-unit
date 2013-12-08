@@ -7,8 +7,6 @@ package com.secpro.platform.monitoring.schedule.services.taskunit;
  *         Task bean
  */
 public class MsuTask {
-	// '{'"tid":"{0}","sid": "{1}","reg": "{2}","ope":
-	// "{3}","cat":"{4}","sat":"{5}","tip":"{6}","tpt":"{7}","con":'{8}',"mda":'{9}''}'
 	final public static String ID_TITLE = "tid";
 	final public static String REGION_TITLE = "reg";
 	final public static String OPERATION_TITLE = "ope";

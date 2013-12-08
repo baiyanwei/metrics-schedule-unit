@@ -227,6 +227,30 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 	}
 
 	/**
+	 * remove the task by ID
+	 * 
+	 * @param taskID
+	 * @return
+	 */
+	public MsuTask removeMSUTaskByTaskID(String taskID) {
+		if (Assert.isEmptyString(taskID) == true) {
+			return null;
+		}
+		synchronized (this._regionTaskStackMap) {
+			String region = null;
+			MsuTask task = null;
+			for (Iterator<String> keyIter = this._regionTaskStackMap.keySet().iterator(); keyIter.hasNext();) {
+				region = keyIter.next();
+				task = this._regionTaskStackMap.get(region).findMSUTask(taskID);
+				if (task != null) {
+					return this._regionTaskStackMap.get(region).removeMUSTask(taskID);
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * update one MSU task.
 	 * 
 	 * @param region

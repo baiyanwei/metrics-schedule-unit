@@ -9,7 +9,6 @@ import java.lang.management.OperatingSystemMXBean;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.spec.X509EncodedKeySpec;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +30,6 @@ import com.secpro.platform.core.services.IService;
 import com.secpro.platform.core.services.ServiceHelper;
 import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.core.utils.Assert;
-import com.secpro.platform.core.utils.Utils;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.Activator;
 import com.secpro.platform.monitoring.schedule.action.ScheduleAction;
@@ -60,9 +58,6 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	//
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(MetricsScheduleUnitService.class);
 
-	private static HashMap<String, MessageFormat> messageFormatters = new HashMap<String, MessageFormat>();
-	private static String[] messageFiles = new String[] { "msu-task.js" };
-
 	// 最大加密明文大小
 	private static final int MAX_ENCRYPT_BLOCK = 117;
 	//
@@ -76,7 +71,7 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	@XmlElement(name = "scheduleTimerExecuteInterval", type = Long.class, defaultValue = "3600000")
 	public long _scheduleTimerExecuteInterval = 3600000;
 	//
-	private HashMap<String, String[]> _regionNameMap = new HashMap<String, String[]>();
+	private HashMap<String, String> _cityBelongRegionMap = new HashMap<String, String>();
 	// task service
 	public TaskCoreService _taskCoreService = null;
 	// schedule service.
@@ -84,31 +79,14 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	//
 	private Timer _scheduleTimer = null;
 
-	static {
-		createMessageFormatters();
-	};
-
-	private static void createMessageFormatters() {
-		for (int index = 0; index < messageFiles.length; index++) {
-			String fileName = messageFiles[index];
-			StringBuffer stringBuffer = Utils.getInputStream2StringBuffer(MetricsScheduleUnitService.class.getResourceAsStream("messages/" + fileName));
-
-			MessageFormat messageFormat = new MessageFormat(stringBuffer.toString());
-
-			// Remove the file extension.
-			int intPos = fileName.indexOf(".");
-			if (intPos != -1) {
-				fileName = fileName.substring(0, intPos);
-			}
-			messageFormatters.put(fileName, messageFormat);
-		}
-	}
-
 	@Override
 	public void start() throws PlatformException {
 
 		// register itself as dynamic bean
 		this.registerMBean(_jmxObjectName, this);
+		//
+		// Get the region information from database.
+		initRegionReferent();
 		// create task core server for task management.
 		this._taskCoreService = new TaskCoreService();
 		// create schedule core server for task management.
@@ -116,13 +94,12 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		// register two service into OSGI frame.
 		ServiceHelper.registerService(_taskCoreService);
 		ServiceHelper.registerService(_scheduleCoreService);
-		// Get the region information from database.
-		initRegionReferent();
+
 		//
 		startScheduleTimer();
 
 		//
-		theLogger.info("starUp", _regionNameMap.keySet().toString());
+		theLogger.info("starUp", _cityBelongRegionMap.keySet().toString());
 
 		System.out.println(_scheduleCoreService.getEveryRegionScheduleSize());
 		System.out.println(_taskCoreService.getEveryRegionTaskSize());
@@ -144,9 +121,9 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		// start on next hour 00:00
 		_scheduleTimer.schedule(new ScheduleAction(this), delayPoint, _scheduleTimerExecuteInterval);
 		// test
-		if (delayPoint > 60000) {
-			new ScheduleAction(this).run();
-		}
+		// if (delayPoint > 60000) {
+		// new ScheduleAction(this).run();
+		// }
 	}
 
 	/**
@@ -158,15 +135,29 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 			return;
 		}
 		//
-		List<Object[]> resultData = dataBaseStorageAdapter.selectRecords(theLogger.getMessageFormat("SQL_SELECT_ALL_REGION"));
+		List<Object[]> resultData = dataBaseStorageAdapter.selectRecords("SELECT CITY_CODE,TASK_REGION FROM SYS_CITY WHERE TASK_REGION IS NOT NULL");
 		if (resultData == null || resultData.isEmpty() == true) {
 			return;
 		}
+		//
+		this._cityBelongRegionMap.clear();
 		// {{CITY_NAME,CITY_CODE,CITY_LEVEL,PARENT_CODE},}
 		for (int i = 0; i < resultData.size(); i++) {
-			this._regionNameMap.put((String) resultData.get(i)[0], new String[] { (String) resultData.get(i)[0], (String) resultData.get(i)[1], (String) resultData.get(i)[2],
-					(String) resultData.get(i)[3] });
+			this._cityBelongRegionMap.put((String) resultData.get(i)[0], (String) resultData.get(i)[1]);
 		}
+	}
+
+	/**
+	 * get the schedule region by city code.
+	 * 
+	 * @param cityCode
+	 * @return
+	 */
+	public String getTaskRegionByCityCode(String cityCode) {
+		if (Assert.isEmptyString(cityCode) == true) {
+			return null;
+		}
+		return _cityBelongRegionMap.get(cityCode);
 	}
 
 	/**
@@ -200,7 +191,7 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 			packageTaskArray.put(taskContent);
 		}
 		this._scheduleCoreService.updateScheduleStatus(updateScheduleList);
-		//System.out.println(">>>" + packageTaskArray.toString());
+		// System.out.println(">>>" + packageTaskArray.toString());
 		return packageTaskArray.toString();
 	}
 
@@ -344,5 +335,15 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 	@Metric(description = "get size of the task queue times ")
 	public int getTaskQueueTimesSize() {
 		return 0;
+	}
+
+	@Metric(description = "reload the task region mapping data")
+	public void reloadTaskRegionMapping() {
+		initRegionReferent();
+	}
+
+	@Metric(description = "create some schedule for test")
+	public void testCreateSomeSchedule() {
+		new ScheduleAction(this).run();
 	}
 }
