@@ -205,7 +205,9 @@ public class TaskCoreService extends AbstractMetricMBean implements IService, Dy
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(taskID) == true) {
 			return null;
 		}
-
+		if (this._regionTaskStackMap.containsKey(region) == false) {
+			return null;
+		}
 		return this._regionTaskStackMap.get(region).findMSUTask(taskID);
 	}
 

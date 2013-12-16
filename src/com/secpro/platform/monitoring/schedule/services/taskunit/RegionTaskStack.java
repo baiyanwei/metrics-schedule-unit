@@ -127,6 +127,9 @@ public class RegionTaskStack implements IService {
 			taskID = taskIter.next();
 			taskObj = _regionTaskMap.get(taskID);
 			try {
+				if (taskObj.getIsRealtime() == true) {
+					continue;
+				}
 				CronExpression cron = new CronExpression(taskObj.getSchedule());
 				long nextPoint = cron.getNextValidTimeAfter(currentPoint).getTime();
 				long flowTime = currentTime - nextPoint;

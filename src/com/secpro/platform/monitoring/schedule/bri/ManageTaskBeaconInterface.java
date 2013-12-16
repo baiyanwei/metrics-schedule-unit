@@ -68,10 +68,9 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 						throw new PlatformException("createScheduleError " + messageContent);
 					}
 					_metricsScheduleUnitService._scheduleCoreService.putMSUSchedule(msuSchedule, msuTask.getIsRealtime());
-				} else {
-					// schedule task.
-					_metricsScheduleUnitService._taskCoreService.putMSUTask(msuTask);
 				}
+				// schedule task.
+				_metricsScheduleUnitService._taskCoreService.putMSUTask(msuTask);
 			} else if ("TOPIC-TASK-UPDATE".equalsIgnoreCase(managementOperationType) == true) {
 				// update a exist task in system.
 				MsuTask msuTask = buildMSUTask(messageContent);
