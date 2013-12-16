@@ -45,10 +45,11 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 		System.out.println("Received message" + messageContent + "");
 		//
 		try {
+			if (_metricsScheduleUnitService == null) {
+				_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
+			}
 			if ("TOPIC-REGION-RELOAD".equalsIgnoreCase(managementOperationType) == true) {
-				if (_metricsScheduleUnitService == null) {
-					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
-				}
+				//
 				_metricsScheduleUnitService.reloadTaskRegionMapping();
 				// task add.
 			} else if ("TOPIC-TASK-ADD".equalsIgnoreCase(managementOperationType) == true) {
@@ -57,9 +58,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 					theLogger.error("errorTaskJSONFormat", messageContent);
 					throw new PlatformException("errorTaskJSONFormat " + messageContent);
 				}
-				if (_metricsScheduleUnitService == null) {
-					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
-				}
+				//
 				if (msuTask.getIsRealtime() == true) {
 					// Task is a real-time task.
 					// real-time task just add into schedule system.
@@ -80,9 +79,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 					theLogger.error("errorTaskJSONFormat", messageContent);
 					throw new PlatformException("errorTaskJSONFormat " + messageContent);
 				}
-				if (_metricsScheduleUnitService == null) {
-					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
-				}
+				//
 				_metricsScheduleUnitService._taskCoreService.updateMSUTask(msuTask);
 			} else if ("TOPIC-TASK-REMOVE".equalsIgnoreCase(managementOperationType) == true) {
 				// remove the task from system.
@@ -91,9 +88,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 					theLogger.error("Can't find the remove targets in content:" + messageContent);
 					throw new PlatformException("Can't find the remove targets in content:" + messageContent);
 				}
-				if (_metricsScheduleUnitService == null) {
-					_metricsScheduleUnitService = ServiceHelper.findService(MetricsScheduleUnitService.class);
-				}
+				//
 				for (String taskID : taskIdArray) {
 					_metricsScheduleUnitService._taskCoreService.removeMSUTaskByTaskID(taskID);
 				}
