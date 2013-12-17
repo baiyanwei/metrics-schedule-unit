@@ -1,6 +1,5 @@
 package com.secpro.platform.monitoring.schedule.services.taskunit;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -132,9 +131,9 @@ public class RegionTaskStack implements IService {
 				}
 				CronExpression cron = new CronExpression(taskObj.getSchedule());
 				long nextPoint = cron.getNextValidTimeAfter(currentPoint).getTime();
-				long flowTime = currentTime - nextPoint;
+				long flowTime = nextPoint - currentTime;
 				// 1 hour.
-				if (flowTime >= 0 && flowTime > 3600000L) {
+				if (flowTime < 0 || flowTime > 3600000L) {
 					continue;
 				}
 				if (scheduleMap.containsKey(taskObj.getOperation()) == false) {
@@ -145,7 +144,7 @@ public class RegionTaskStack implements IService {
 					List<MSUSchedule> scheduleList = scheduleMap.get(taskObj.getOperation());
 					scheduleList.add(TaskUtil.createScheduleOnTime(taskObj, nextPoint, currentTime));
 				}
-			} catch (ParseException e) {
+			} catch (Exception e) {
 				theLogger.exception(e);
 				continue;
 			}
