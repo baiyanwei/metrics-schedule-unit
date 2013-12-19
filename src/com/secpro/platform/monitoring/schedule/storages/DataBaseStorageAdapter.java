@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.management.DynamicMBean;
@@ -315,6 +316,54 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 		}
 		//
 		return scheduleList;
+	}
+
+	/**
+	 * get mapping by region and ip.
+	 * 
+	 * @return
+	 */
+	public HashMap<String, HashMap<String, String>> queryFireWallTypeCodeMapping() {
+
+		// Map<region,String[]{ip,type_code}>
+		StringBuffer querySql = new StringBuffer();
+		querySql.append("SELECT T2.TASK_REGION,T1.RES_IP,T1.TYPE_CODE");
+		querySql.append("  FROM (SELECT O.RES_IP, O.TYPE_CODE, O.CITY_CODE");
+		querySql.append("          FROM SYS_RES_OBJ O");
+		querySql.append("         WHERE O.CLASS_ID = 1) T1");
+		querySql.append("  LEFT JOIN (SELECT C.CITY_CODE, C.TASK_REGION");
+		querySql.append("               FROM SYS_CITY C");
+		querySql.append("              WHERE C.TASK_REGION IS NOT NULL) T2");
+		querySql.append("    ON T1.CITY_CODE = T2.CITY_CODE");
+
+		//
+		List<Object[]> rowData = selectRecords(querySql.toString());
+		HashMap<String, HashMap<String, String>> regionMap = new HashMap<String, HashMap<String, String>>();
+		if (rowData == null || rowData.isEmpty() == true) {
+			return regionMap;
+		}
+		//
+		for (int i = 0; i < rowData.size(); i++) {
+			try {
+				Object[] row = rowData.get(i);
+				String region = (String) row[0];
+				String ip = (String) row[1];
+				String type_code = (String) row[2];
+				if (regionMap.containsKey(region) == false) {
+					HashMap<String, String> ipMap = new HashMap<String, String>();
+					ipMap.put(ip, type_code);
+					regionMap.put(region, ipMap);
+				} else {
+					HashMap<String, String> ipMap = regionMap.get(region);
+					ipMap.put(ip, type_code);
+				}
+			} catch (Exception e) {
+				theLogger.exception(e);
+				continue;
+			}
+		}
+		//
+		return regionMap;
 	}
 
 	public List<Object[]> selectRecords(String sql) {

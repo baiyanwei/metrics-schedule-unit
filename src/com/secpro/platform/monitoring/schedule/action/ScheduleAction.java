@@ -26,8 +26,11 @@ public class ScheduleAction extends TimerTask {
 	//
 	private MetricsScheduleUnitService _metricsScheduleUnitService = null;
 
+	private long _scheduleInterval = 0;
+
 	public ScheduleAction(MetricsScheduleUnitService metricsScheduleUnitService) {
 		this._metricsScheduleUnitService = metricsScheduleUnitService;
+		this._scheduleInterval = metricsScheduleUnitService._scheduleTimerExecuteInterval;
 	}
 
 	@Override
@@ -54,7 +57,7 @@ public class ScheduleAction extends TimerTask {
 				region = regionIter.next();
 				stack = regionTaskStackMap.get(region);
 				try {
-					HashMap<String, List<MSUSchedule>> scheduleMap = stack.nextHourSchedule(currentPoint);
+					HashMap<String, List<MSUSchedule>> scheduleMap = stack.nextHourSchedule(currentPoint,_scheduleInterval);
 					// put schedule into region stack.
 					for (Iterator<String> operationIter = scheduleMap.keySet().iterator(); operationIter.hasNext();) {
 						String operation = operationIter.next();

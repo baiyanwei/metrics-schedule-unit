@@ -10,6 +10,8 @@ import javax.management.DynamicMBean;
 import javax.xml.bind.annotation.XmlElement;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import com.secpro.platform.core.exception.PlatformException;
 import com.secpro.platform.core.metrics.AbstractMetricMBean;
@@ -19,6 +21,7 @@ import com.secpro.platform.core.services.ServiceInfo;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.log.utils.PlatformLogger;
 import com.secpro.platform.monitoring.schedule.action.SysLogStandardRulePublishAction;
+import com.secpro.platform.monitoring.schedule.bri.ManageTaskBeaconInterface;
 import com.secpro.platform.monitoring.schedule.services.syslogruleunit.MSUSysLogStandardRule;
 import com.secpro.platform.monitoring.schedule.storages.DataBaseStorageAdapter;
 
@@ -36,9 +39,12 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	//
 	@XmlElement(name = "jmxObjectName", defaultValue = "secpro.msu:type=MetricsSyslogRuleService")
 	public String _jmxObjectName = "secpro.msu:type=MetricsSyslogRuleService";
-	//
-	private HashMap<String, URI> _mcaPublishReferentMap = new HashMap<String, URI>();
+	// Map<region,Map<mcaName,callback>>
+	private HashMap<String, HashMap<String, URI>> _mcaPublishReferentMap = new HashMap<String, HashMap<String, URI>>();
+	// MAP<type_code,ruleBean>
 	private HashMap<String, List<MSUSysLogStandardRule>> _syslogStandardRuleMap = new HashMap<String, List<MSUSysLogStandardRule>>();
+	// MAP<region,Map<ip,type_code>>
+	private HashMap<String, HashMap<String, String>> _regionFWTypeCodeMap = new HashMap<String, HashMap<String, String>>();
 
 	@Override
 	public void start() throws PlatformException {
@@ -60,11 +66,14 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * ready the location and operation from the database.
 	 */
 	private void initSyslogStandardRuleData() {
+		//
+		_regionFWTypeCodeMap = getregionFWTypeCodeMappingDataFromFromDataBase();
 		// #1 read DB record.
 		List<MSUSysLogStandardRule> unfetchScheduleList = getSyslogRuleRecordsFromDataBase();
 		if (Assert.isEmptyCollection(unfetchScheduleList) == true) {
 			return;
 		}
+		// TODO??
 		// #2 group into cache.
 		synchronized (this._syslogStandardRuleMap) {
 			for (int i = 0; i < unfetchScheduleList.size(); i++) {
@@ -79,6 +88,19 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 			}
 		}
 
+	}
+
+	/**
+	 * get the region and ip ,type code mapping.
+	 * 
+	 * @return
+	 */
+	private HashMap<String, HashMap<String, String>> getregionFWTypeCodeMappingDataFromFromDataBase() {
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
+			return new HashMap<String, HashMap<String, String>>();
+		}
+		return dataBaseStorageAdapter.queryFireWallTypeCodeMapping();
 	}
 
 	/**
@@ -102,14 +124,21 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param pushPath
 	 * @return
 	 */
-	public String fetchSyslogStandardRuleByRequest(String mcaName, URI pushPath) {
-		if (Assert.isEmptyString(mcaName) == true || pushPath == null) {
+	public String fetchSyslogStandardRuleByRequest(String region, String mcaName, URI pushPath) {
+		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(mcaName) == true || pushPath == null) {
 			return null;
 		}
 		synchronized (this._mcaPublishReferentMap) {
-			this._mcaPublishReferentMap.put(mcaName, pushPath);
+			if (_mcaPublishReferentMap.containsKey(region) == false) {
+				HashMap<String, URI> mcaMap = new HashMap<String, URI>();
+				_mcaPublishReferentMap.put(region, mcaMap);
+				mcaMap.put(mcaName, pushPath);
+			} else {
+				HashMap<String, URI> mcaMap = _mcaPublishReferentMap.get(region);
+				mcaMap.put(mcaName, pushPath);
+			}
 		}
-		return getSysLogStandardRules();
+		return getSysLogStandardRules(region);
 	}
 
 	/**
@@ -118,27 +147,74 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param id
 	 * @param content
 	 */
-	public void publishSysLogStandardRule(String typeCode) {
-		if (Assert.isEmptyString(typeCode) == true) {
+	public void publishSysLogStandardRule(String newTypeCode) {
+		if (Assert.isEmptyString(newTypeCode) == true) {
 			return;
 		}
-		List<MSUSysLogStandardRule> ruleList = loadMSUSysLogStandardRuleFromDB(typeCode);
+		List<MSUSysLogStandardRule> ruleList = loadMSUSysLogStandardRuleFromDB(newTypeCode);
 		if (Assert.isEmptyCollection(ruleList) == true) {
 			return;
 		}
 		synchronized (this._syslogStandardRuleMap) {
-			this._syslogStandardRuleMap.put(typeCode, ruleList);
+			this._syslogStandardRuleMap.put(newTypeCode, ruleList);
 		}
-		JSONArray publishContentArray = fillAndBuildRulesMessage(ruleList, new JSONArray());
+		Object[] referentObj = getIpAndMCAbyFwTypeCode(newTypeCode);
+		@SuppressWarnings("unchecked")
+		HashMap<String, URI> pushBackMap = (HashMap<String, URI>) referentObj[0];
+
+		if (pushBackMap.isEmpty() == true) {
+			return;
+		}
+		@SuppressWarnings("unchecked")
+		ArrayList<String> ipList = (ArrayList<String>) referentObj[1];
 		//
-		for (Iterator<String> keyIter = this._mcaPublishReferentMap.keySet().iterator(); keyIter.hasNext();) {
-			try {
-				publishSysLogStandardRuleToMCA(publishContentArray.toString(), this._mcaPublishReferentMap.get(keyIter.next()));
-			} catch (Exception e) {
-				theLogger.exception(e);
+		JSONArray publishContentArray = new JSONArray();
+		//
+		fillAndBuildRulesMessage(ipList, newTypeCode, ruleList, publishContentArray);
+		//
+		if (publishContentArray.length() == 0) {
+			return;
+		}
+		// publish the change into mca.
+		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_UPDATE, publishContentArray.toString(), pushBackMap);
+	}
+
+	/**
+	 * get change FireWall resource IP and relation MCA
+	 * 
+	 * @param newTypeCode
+	 * @return
+	 */
+	private Object[] getIpAndMCAbyFwTypeCode(String newTypeCode) {
+		if (Assert.isEmptyString(newTypeCode) == true) {
+			return new Object[] { new HashMap<String, URI>(), new ArrayList<String>() };
+		}
+		HashMap<String, URI> pushBackMap = new HashMap<String, URI>();
+		ArrayList<String> ipList = new ArrayList<String>();
+		for (Iterator<String> regionIter = this._regionFWTypeCodeMap.keySet().iterator(); regionIter.hasNext();) {
+			String region = regionIter.next();
+			HashMap<String, String> fwMap = this._regionFWTypeCodeMap.get(region);
+			if (fwMap == null || fwMap.isEmpty() == true) {
 				continue;
 			}
+			boolean isAdd = false;
+			for (Iterator<String> fwIter = fwMap.keySet().iterator(); fwIter.hasNext();) {
+				String ip = fwIter.next();
+				String typeCode = fwMap.get(ip);
+				if (typeCode.equalsIgnoreCase(newTypeCode)) {
+					ipList.add(ip);
+					//
+					if (isAdd == false) {
+						HashMap<String, URI> callBackMap = this._mcaPublishReferentMap.get(region);
+						if (callBackMap != null) {
+							pushBackMap.putAll(callBackMap);
+						}
+						isAdd = true;
+					}
+				}
+			}
 		}
+		return new Object[] { pushBackMap, ipList };
 	}
 
 	private List<MSUSysLogStandardRule> loadMSUSysLogStandardRuleFromDB(String typeCode) {
@@ -165,40 +241,98 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		synchronized (this._syslogStandardRuleMap) {
 			this._syslogStandardRuleMap.remove(typeCode);
 		}
+		Object[] referentObj = getIpAndMCAbyFwTypeCode(typeCode);
+		@SuppressWarnings("unchecked")
+		HashMap<String, URI> pushBackMap = (HashMap<String, URI>) referentObj[0];
+
+		if (pushBackMap.isEmpty() == true) {
+			return;
+		}
+		@SuppressWarnings("unchecked")
+		ArrayList<String> ipList = (ArrayList<String>) referentObj[1];
+		String removeRuleIps = "";
+		for (int i = 0; i < ipList.size(); i++) {
+			removeRuleIps = removeRuleIps + ipList.get(i) + ",";
+		}
+		if (removeRuleIps.endsWith(",") == true) {
+			removeRuleIps = removeRuleIps.substring(0, removeRuleIps.length() - 1);
+		}
+		// publish the change into mca.
+		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_REMOVE, removeRuleIps, pushBackMap);
+
 	}
 
 	/**
 	 * publish the rule to target.
 	 * 
 	 * @param content
-	 * @param publishPath
+	 * @param pushBackMap
 	 * @throws Exception
 	 */
-	private void publishSysLogStandardRuleToMCA(String content, URI publishPath) throws Exception {
-		new SysLogStandardRulePublishAction(publishPath, content).start();
+	private void publishSysLogStandardRuleToMCA(String operationCode, String content, HashMap<String, URI> pushBackMap) {
+		for (Iterator<String> mcaIter = pushBackMap.keySet().iterator(); mcaIter.hasNext();) {
+			try {
+				new SysLogStandardRulePublishAction(pushBackMap.get(mcaIter.next()), operationCode, content).start();
+			} catch (Exception e) {
+				theLogger.exception(e);
+			}
+		}
 	}
 
 	/**
 	 * get the SYSLOG rule content.
 	 * 
+	 * @param region
+	 * 
 	 * @return
 	 */
-	private String getSysLogStandardRules() {
-		String keyName = null;
+	private String getSysLogStandardRules(String region) {
 		JSONArray allRullArray = new JSONArray();
-		for (Iterator<String> keyIter = this._syslogStandardRuleMap.keySet().iterator(); keyIter.hasNext();) {
-			keyName = keyIter.next();
-			fillAndBuildRulesMessage(this._syslogStandardRuleMap.get(keyName), allRullArray);
+		HashMap<String, String> fwMap = this._regionFWTypeCodeMap.get(region);
+		if (fwMap == null || fwMap.isEmpty() == true) {
+			return allRullArray.toString();
+		}
+		//
+		String fwIp = null;
+		String fwTypeCode = null;
+		for (Iterator<String> keyIter = fwMap.keySet().iterator(); keyIter.hasNext();) {
+			fwIp = keyIter.next();
+			fwTypeCode = fwMap.get(fwIp);
+			fillAndBuildRulesMessage(fwIp, fwTypeCode, this._syslogStandardRuleMap.get(fwTypeCode), allRullArray);
 		}
 		return allRullArray.toString();
 	}
 
-	private JSONArray fillAndBuildRulesMessage(List<MSUSysLogStandardRule> ruleList, JSONArray typeRuleArray) {
-		if (ruleList == null || typeRuleArray == null) {
-			return null;
+	private void fillAndBuildRulesMessage(ArrayList<String> ipList, String typeCode, List<MSUSysLogStandardRule> ruleList, JSONArray typeRuleArray) {
+		if (Assert.isEmptyCollection(ruleList) == true || Assert.isEmptyCollection(ipList) == true) {
+			return;
 		}
-		// TODO ??
-		return typeRuleArray;
+		for (String ip : ipList) {
+			fillAndBuildRulesMessage(ip, typeCode, ruleList, typeRuleArray);
+		}
+	}
+
+	private void fillAndBuildRulesMessage(String ip, String typeCode, List<MSUSysLogStandardRule> ruleList, JSONArray typeRuleArray) {
+		if (Assert.isEmptyCollection(ruleList) == true || typeRuleArray == null) {
+			return;
+		}
+		try {
+			// regexs:JSONObject,ip:String,
+			JSONObject ruleObj = new JSONObject();
+			ruleObj.put("ip", ip);
+			ruleObj.put("typeCode", typeCode);
+			ruleObj.put("checkAction", ruleList.get(0).getCheckAction());
+			ruleObj.put("checkNum", ruleList.get(0).getCheckNum());
+			JSONObject regexsObj = new JSONObject();
+			for (MSUSysLogStandardRule logRule : ruleList) {
+				regexsObj.put(logRule.getRuleKey(), logRule.getRuleValue());
+			}
+			ruleObj.put("regexs", regexsObj);
+			typeRuleArray.put(ruleObj);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+
 	}
 
 }

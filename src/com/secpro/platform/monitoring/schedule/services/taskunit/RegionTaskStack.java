@@ -117,7 +117,7 @@ public class RegionTaskStack implements IService {
 		return msuTask;
 	}
 
-	public HashMap<String, List<MSUSchedule>> nextHourSchedule(Date currentPoint) {
+	public HashMap<String, List<MSUSchedule>> nextHourSchedule(Date currentPoint, long scheduleInterval) {
 		String taskID = null;
 		MsuTask taskObj = null;
 		long currentTime = currentPoint.getTime();
@@ -132,8 +132,8 @@ public class RegionTaskStack implements IService {
 				CronExpression cron = new CronExpression(taskObj.getSchedule());
 				long nextPoint = cron.getNextValidTimeAfter(currentPoint).getTime();
 				long flowTime = nextPoint - currentTime;
-				// 1 hour.
-				if (flowTime < 0 || flowTime > 3600000L) {
+				// in scheduleInterval area.
+				if (flowTime < 0 || flowTime > scheduleInterval) {
 					continue;
 				}
 				if (scheduleMap.containsKey(taskObj.getOperation()) == false) {

@@ -101,8 +101,8 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 		//
 		theLogger.info("starUp", _cityBelongRegionMap.keySet().toString());
 
-		System.out.println(_scheduleCoreService.getEveryRegionScheduleSize());
-		System.out.println(_taskCoreService.getEveryRegionTaskSize());
+		//System.out.println(_scheduleCoreService.getEveryRegionScheduleSize());
+		//System.out.println(_taskCoreService.getEveryRegionTaskSize());
 
 	}
 
@@ -116,7 +116,8 @@ public class MetricsScheduleUnitService extends AbstractMetricMBean implements I
 
 		long currentPoint = System.currentTimeMillis();
 		//
-		long delayPoint = 3600000 - currentPoint % 3600000;
+		long delayPoint = _scheduleTimerExecuteInterval - currentPoint % _scheduleTimerExecuteInterval;
+		// long delayPoint = 3600000 - currentPoint % 3600000;
 		_scheduleTimer = new Timer("MetricsScheduleUnitService._scheduleTimer");
 		// start on next hour 00:00
 		_scheduleTimer.schedule(new ScheduleAction(this), delayPoint, _scheduleTimerExecuteInterval);

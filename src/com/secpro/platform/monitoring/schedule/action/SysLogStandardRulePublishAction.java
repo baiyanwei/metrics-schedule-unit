@@ -19,6 +19,7 @@ import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpVersion;
 
 import com.secpro.platform.api.client.ClientConfiguration;
+import com.secpro.platform.api.client.InterfaceParameter;
 import com.secpro.platform.api.common.http.client.HttpClient;
 import com.secpro.platform.core.utils.Assert;
 import com.secpro.platform.core.utils.Constants;
@@ -35,10 +36,12 @@ public class SysLogStandardRulePublishAction extends Thread {
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(SysLogStandardRulePublishAction.class);
 	private URI _targetURI = null;
 	private String _publishConten = null;
+	private String _operationCode = null;
 
-	public SysLogStandardRulePublishAction(URI publishTarget, String content) {
+	public SysLogStandardRulePublishAction(URI publishTarget, String operationCode, String content) {
 		this._targetURI = publishTarget;
 		this._publishConten = content;
+		this._operationCode = operationCode;
 	}
 
 	@Override
@@ -86,6 +89,7 @@ public class SysLogStandardRulePublishAction extends Thread {
 			config._responseListener.setName("Target->" + this._targetURI.toString());
 			//
 			config._parameterMap = new HashMap<String, String>();
+			config._parameterMap.put(InterfaceParameter.ManagementParameter.OPERATION_TYPE, _operationCode);
 			config._content = this._publishConten;
 			//
 			client.configure(config);

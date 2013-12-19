@@ -23,8 +23,14 @@ import com.secpro.platform.monitoring.schedule.task.TaskUtil;
 public class ManageTaskBeaconInterface extends HttpServer implements IService {
 	final private static PlatformLogger theLogger = PlatformLogger.getLogger(ManageTaskBeaconInterface.class);
 
-	final public static String[] MANAGEMENT_OPERATION_TYPE = new String[] { "TOPIC-TASK-ADD", "TOPIC-TASK-UPDATE", "TOPIC-TASK-REMOVE", "TOPIC-SYSLOG-STANDARD-RULE-ADD",
-			"TOPIC-SYSLOG-STANDARD-RULE-UPDATE", "TOPIC-SYSLOG-STANDARD-RULE-REMOVE" };
+	final public static String MSU_COMMAND_TASK_ADD = "TOPIC-TASK-ADD";
+	final public static String MSU_COMMAND_TASK_UPDATE = "TOPIC-TASK-UPDATE";
+	final public static String MSU_COMMAND_TASK_REMOVE = "TOPIC-TASK-REMOVE";
+
+	final public static String MSU_COMMAND_SYSLOG_RULE_ADD = "TOPIC-SYSLOG-STANDARD-RULE-ADD";
+	final public static String MSU_COMMAND_SYSLOG_RULE_UPDATE = "TOPIC-SYSLOG-STANDARD-RULE-UPDATE";
+	final public static String MSU_COMMAND_SYSLOG_RULE_REMOVE = "TOPIC-SYSLOG-STANDARD-RULE-REMOVE";
+
 	private MetricsScheduleUnitService _metricsScheduleUnitService = null;
 	private MetricsSyslogRuleService _metricsSyslogRuleService = null;
 
@@ -52,7 +58,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 				//
 				_metricsScheduleUnitService.reloadTaskRegionMapping();
 				// task add.
-			} else if ("TOPIC-TASK-ADD".equalsIgnoreCase(managementOperationType) == true) {
+			} else if (MSU_COMMAND_TASK_ADD.equalsIgnoreCase(managementOperationType) == true) {
 				MsuTask msuTask = buildMSUTask(messageContent);
 				if (msuTask == null) {
 					theLogger.error("errorTaskJSONFormat", messageContent);
@@ -71,7 +77,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 				}
 				// schedule task.
 				_metricsScheduleUnitService._taskCoreService.putMSUTask(msuTask);
-			} else if ("TOPIC-TASK-UPDATE".equalsIgnoreCase(managementOperationType) == true) {
+			} else if (MSU_COMMAND_TASK_UPDATE.equalsIgnoreCase(managementOperationType) == true) {
 				// update a exist task in system.
 				MsuTask msuTask = buildMSUTask(messageContent);
 				if (msuTask == null) {
@@ -80,7 +86,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 				}
 				//
 				_metricsScheduleUnitService._taskCoreService.updateMSUTask(msuTask);
-			} else if ("TOPIC-TASK-REMOVE".equalsIgnoreCase(managementOperationType) == true) {
+			} else if (MSU_COMMAND_TASK_REMOVE.equalsIgnoreCase(managementOperationType) == true) {
 				// remove the task from system.
 				String[] taskIdArray = messageContent.split(",");
 				if (taskIdArray == null || taskIdArray.length == 0) {
@@ -92,8 +98,8 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 					_metricsScheduleUnitService._taskCoreService.removeMSUTaskByTaskID(taskID);
 				}
 				//
-			} else if ("TOPIC-SYSLOG-STANDARD-RULE-ADD".equalsIgnoreCase(managementOperationType) == true
-					|| "TOPIC-SYSLOG-STANDARD-RULE-UPDATE".equalsIgnoreCase(managementOperationType) == true) {
+			} else if (MSU_COMMAND_SYSLOG_RULE_ADD.equalsIgnoreCase(managementOperationType) == true
+					|| MSU_COMMAND_SYSLOG_RULE_UPDATE.equalsIgnoreCase(managementOperationType) == true) {
 				// add or update one group rule by typeCode
 				String typeCode = messageContent;
 				// MSUSysLogStandardRule ruleObj =
@@ -106,7 +112,7 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
 				}
 				_metricsSyslogRuleService.publishSysLogStandardRule(typeCode);
-			} else if ("TOPIC-SYSLOG-STANDARD-RULE-REMOVE".equalsIgnoreCase(managementOperationType) == true) {
+			} else if (MSU_COMMAND_SYSLOG_RULE_REMOVE.equalsIgnoreCase(managementOperationType) == true) {
 				// remove the rule without publishing.
 				String typeCode = messageContent;
 				// MSUSysLogStandardRule ruleObj =

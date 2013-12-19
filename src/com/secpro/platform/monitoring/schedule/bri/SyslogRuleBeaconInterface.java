@@ -45,6 +45,6 @@ public class SyslogRuleBeaconInterface extends HttpServer implements IService {
 			_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
 		}
 
-		return _metricsSyslogRuleService.fetchSyslogStandardRuleByRequest(region + "#" + mca, publishURI);
+		return _metricsSyslogRuleService.fetchSyslogStandardRuleByRequest(region, mca, publishURI);
 	}
 }

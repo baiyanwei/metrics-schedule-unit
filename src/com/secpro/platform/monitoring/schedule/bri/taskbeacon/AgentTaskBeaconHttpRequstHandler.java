@@ -68,7 +68,6 @@ public class AgentTaskBeaconHttpRequstHandler implements IHttpRequestHandler {
 			_agentTaskBeaconInterface = ServiceHelper.findService(AgentTaskBeaconInterface.class);
 		}
 		try {
-			// TODO ??MCA need to change and fill this header parameter.
 			String region = request.getHeader(InterfaceParameter.HttpHeaderParameter.REGION);
 			if (Assert.isEmptyString(region) == true) {
 				throw new Exception("invalid parameter " + InterfaceParameter.HttpHeaderParameter.REGION);
