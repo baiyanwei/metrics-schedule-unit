@@ -169,25 +169,30 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		synchronized (this._syslogStandardRuleMap) {
 			this._syslogStandardRuleMap.put(newTypeCode, ruleList);
 		}
-		Object[] referentObj = getIpAndMCAbyFwTypeCode(newTypeCode);
-		@SuppressWarnings("unchecked")
-		HashMap<String, URI> pushBackMap = (HashMap<String, URI>) referentObj[0];
-
-		if (pushBackMap.isEmpty() == true) {
+		HashMap<String, List<String>> pushBackRegionMap = getIpAndRegionMapping(newTypeCode);
+		if (pushBackRegionMap == null || pushBackRegionMap.isEmpty() == true) {
 			return;
 		}
-		@SuppressWarnings("unchecked")
-		ArrayList<String> ipList = (ArrayList<String>) referentObj[1];
-		//
-		JSONArray publishContentArray = new JSONArray();
-		//
-		fillAndBuildRulesMessage(ipList, newTypeCode, ruleList, publishContentArray);
-		//
-		if (publishContentArray.length() == 0) {
-			return;
+		for (Iterator<String> regionIter = pushBackRegionMap.keySet().iterator(); regionIter.hasNext();) {
+			String region = regionIter.next();
+			List<String> ipList = pushBackRegionMap.get(region);
+			if (Assert.isEmptyCollection(ipList) == true) {
+				continue;
+			}
+			HashMap<String, URI> pushMcas = _mcaPublishReferentMap.get(region);
+			if (pushMcas == null || pushMcas.isEmpty() == true) {
+				continue;
+			}
+			JSONArray publishContentArray = new JSONArray();
+			//
+			fillAndBuildRulesMessage(ipList, newTypeCode, ruleList, publishContentArray);
+			//
+			if (publishContentArray.length() == 0) {
+				continue;
+			}
+			// ublish the change into mca.
+			publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_UPDATE, publishContentArray.toString(), pushMcas);
 		}
-		// publish the change into mca.
-		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_UPDATE, publishContentArray.toString(), pushBackMap);
 	}
 
 	/**
@@ -196,36 +201,35 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	 * @param newTypeCode
 	 * @return
 	 */
-	private Object[] getIpAndMCAbyFwTypeCode(String newTypeCode) {
+	private HashMap<String, List<String>> getIpAndRegionMapping(String newTypeCode) {
 		if (Assert.isEmptyString(newTypeCode) == true) {
-			return new Object[] { new HashMap<String, URI>(), new ArrayList<String>() };
+			return new HashMap<String, List<String>>();
 		}
-		HashMap<String, URI> pushBackMap = new HashMap<String, URI>();
-		ArrayList<String> ipList = new ArrayList<String>();
+		HashMap<String, List<String>> pushBackRegionMap = new HashMap<String, List<String>>();
+		//
 		for (Iterator<String> regionIter = this._regionFWTypeCodeMap.keySet().iterator(); regionIter.hasNext();) {
 			String region = regionIter.next();
 			HashMap<String, String> fwMap = this._regionFWTypeCodeMap.get(region);
 			if (fwMap == null || fwMap.isEmpty() == true) {
 				continue;
 			}
-			boolean isAdd = false;
 			for (Iterator<String> fwIter = fwMap.keySet().iterator(); fwIter.hasNext();) {
 				String ip = fwIter.next();
 				String typeCode = fwMap.get(ip);
 				if (typeCode.equalsIgnoreCase(newTypeCode)) {
-					ipList.add(ip);
 					//
-					if (isAdd == false) {
-						HashMap<String, URI> callBackMap = this._mcaPublishReferentMap.get(region);
-						if (callBackMap != null) {
-							pushBackMap.putAll(callBackMap);
-						}
-						isAdd = true;
+					if (pushBackRegionMap.containsKey(region) == true) {
+						List<String> ipList = pushBackRegionMap.get(region);
+						ipList.add(ip);
+					} else {
+						List<String> ipList = new ArrayList<String>();
+						ipList.add(ip);
+						pushBackRegionMap.put(region, ipList);
 					}
 				}
 			}
 		}
-		return new Object[] { pushBackMap, ipList };
+		return pushBackRegionMap;
 	}
 
 	private List<MSUSysLogStandardRule> loadMSUSysLogStandardRuleFromDB(String typeCode) {
@@ -252,24 +256,31 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		synchronized (this._syslogStandardRuleMap) {
 			this._syslogStandardRuleMap.remove(typeCode);
 		}
-		Object[] referentObj = getIpAndMCAbyFwTypeCode(typeCode);
-		@SuppressWarnings("unchecked")
-		HashMap<String, URI> pushBackMap = (HashMap<String, URI>) referentObj[0];
-
-		if (pushBackMap.isEmpty() == true) {
+		HashMap<String, List<String>> pushBackRegionMap = getIpAndRegionMapping(typeCode);
+		if (pushBackRegionMap == null || pushBackRegionMap.isEmpty() == true) {
 			return;
 		}
-		@SuppressWarnings("unchecked")
-		ArrayList<String> ipList = (ArrayList<String>) referentObj[1];
-		String removeRuleIps = "";
-		for (int i = 0; i < ipList.size(); i++) {
-			removeRuleIps = removeRuleIps + ipList.get(i) + ",";
+		for (Iterator<String> regionIter = pushBackRegionMap.keySet().iterator(); regionIter.hasNext();) {
+			String region = regionIter.next();
+			List<String> ipList = pushBackRegionMap.get(region);
+			if (Assert.isEmptyCollection(ipList) == true) {
+				continue;
+			}
+			HashMap<String, URI> pushMcas = _mcaPublishReferentMap.get(region);
+			if (pushMcas == null || pushMcas.isEmpty() == true) {
+				continue;
+			}
+			String removeRuleIps = "";
+			for (int i = 0; i < ipList.size(); i++) {
+				removeRuleIps = removeRuleIps + ipList.get(i) + ",";
+			}
+			if (removeRuleIps.endsWith(",") == true) {
+				removeRuleIps = removeRuleIps.substring(0, removeRuleIps.length() - 1);
+			}
+			// publish the change into mca.
+			publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_REMOVE, removeRuleIps, pushMcas);
+
 		}
-		if (removeRuleIps.endsWith(",") == true) {
-			removeRuleIps = removeRuleIps.substring(0, removeRuleIps.length() - 1);
-		}
-		// publish the change into mca.
-		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_REMOVE, removeRuleIps, pushBackMap);
 
 	}
 
@@ -339,7 +350,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 				for (Iterator<String> regionIter = _regionFWTypeCodeMap.keySet().iterator(); regionIter.hasNext();) {
 					String region = regionIter.next();
 					if (_regionFWTypeCodeMap.get(region).containsKey(ip)) {
-						if(_mcaPublishReferentMap.get(region)!=null){
+						if (_mcaPublishReferentMap.get(region) != null) {
 							pushBackMap.putAll(_mcaPublishReferentMap.get(region));
 						}
 						ipList.add(ip);
@@ -405,7 +416,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		return allRullArray.toString();
 	}
 
-	private void fillAndBuildRulesMessage(ArrayList<String> ipList, String typeCode, List<MSUSysLogStandardRule> ruleList, JSONArray typeRuleArray) {
+	private void fillAndBuildRulesMessage(List<String> ipList, String typeCode, List<MSUSysLogStandardRule> ruleList, JSONArray typeRuleArray) {
 		if (Assert.isEmptyCollection(ruleList) == true || Assert.isEmptyCollection(ipList) == true) {
 			return;
 		}
