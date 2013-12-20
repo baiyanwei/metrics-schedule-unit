@@ -53,6 +53,8 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		//
 		initSyslogStandardRuleData();
 		//
+		loadMcaInforForDataBase();
+		//
 		theLogger.info("startUp");
 	}
 
@@ -128,16 +130,25 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		if (Assert.isEmptyString(region) == true || Assert.isEmptyString(mcaName) == true || pushPath == null) {
 			return null;
 		}
+		boolean isNew = false;
 		synchronized (this._mcaPublishReferentMap) {
 			if (_mcaPublishReferentMap.containsKey(region) == false) {
 				HashMap<String, URI> mcaMap = new HashMap<String, URI>();
 				_mcaPublishReferentMap.put(region, mcaMap);
 				mcaMap.put(mcaName, pushPath);
+				isNew = true;
 			} else {
 				HashMap<String, URI> mcaMap = _mcaPublishReferentMap.get(region);
+				if (mcaMap.containsKey(mcaName) == false) {
+					isNew = true;
+				}
 				mcaMap.put(mcaName, pushPath);
 			}
 		}
+		if (isNew) {
+			this.recordMcaInfor(region, mcaName, pushPath);
+		}
+
 		return getSysLogStandardRules(region);
 	}
 
@@ -263,6 +274,97 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 	}
 
 	/**
+	 * add new FireWall resource and publish to MCAs
+	 * 
+	 * @param messageConent
+	 */
+	public void addFireWallResource(String messageConent) {
+		if (Assert.isEmptyString(messageConent) == true) {
+			return;
+		}
+		// ip#task_region#type_code
+		String[] messageArray = messageConent.split("#");
+		if (messageArray == null || messageArray.length == 0 || messageArray.length < 3) {
+			return;
+		}
+		if (Assert.isEmptyString(messageArray[0]) == true) {
+			return;
+		}
+		if (Assert.isEmptyString(messageArray[1]) == true) {
+			return;
+		}
+		if (Assert.isEmptyString(messageArray[2]) == true) {
+			return;
+		}
+		synchronized (this._regionFWTypeCodeMap) {
+			if (this._regionFWTypeCodeMap.containsKey(messageArray[1]) == true) {
+				HashMap<String, String> ipMap = _regionFWTypeCodeMap.get(messageArray[1]);
+				if (ipMap.containsKey(messageArray[0]) == true) {
+					return;
+				}
+				ipMap.put(messageArray[0], messageArray[2]);
+			} else {
+				HashMap<String, String> ipMap = new HashMap<String, String>();
+				ipMap.put(messageArray[0], messageArray[2]);
+				_regionFWTypeCodeMap.put(messageArray[1], ipMap);
+			}
+		}
+		HashMap<String, URI> pushBackMap = _mcaPublishReferentMap.get(messageArray[1]);
+
+		if (pushBackMap == null || pushBackMap.isEmpty() == true) {
+			return;
+		}
+		// publish the change into mca.
+		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_REMOVE, messageArray[0], pushBackMap);
+
+	}
+
+	/**
+	 * remove the FireWall Resource and publish to MCAs
+	 * 
+	 * @param messageContent
+	 */
+	public void removeFireWallResource(String messageContent) {
+		if (Assert.isEmptyString(messageContent) == true) {
+			return;
+		}
+		String[] ipArray = messageContent.split(",");
+		if (ipArray == null || ipArray.length == 0) {
+			return;
+		}
+		HashMap<String, URI> pushBackMap = new HashMap<String, URI>();
+		ArrayList<String> ipList = new ArrayList<String>();
+		synchronized (_regionFWTypeCodeMap) {
+			for (String ip : ipArray) {
+				for (Iterator<String> regionIter = _regionFWTypeCodeMap.keySet().iterator(); regionIter.hasNext();) {
+					String region = regionIter.next();
+					if (_regionFWTypeCodeMap.get(region).containsKey(ip)) {
+						if(_mcaPublishReferentMap.get(region)!=null){
+							pushBackMap.putAll(_mcaPublishReferentMap.get(region));
+						}
+						ipList.add(ip);
+						_regionFWTypeCodeMap.get(region).remove(ip);
+					}
+				}
+			}
+		}
+		if (pushBackMap == null || pushBackMap.isEmpty() == true) {
+			return;
+		}
+		//
+		String removeRuleIps = "";
+		for (int i = 0; i < ipList.size(); i++) {
+			removeRuleIps = removeRuleIps + ipList.get(i) + ",";
+		}
+		if (removeRuleIps.endsWith(",") == true) {
+			removeRuleIps = removeRuleIps.substring(0, removeRuleIps.length() - 1);
+		}
+		// publish the change into mca.
+		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_REMOVE, removeRuleIps, pushBackMap);
+
+	}
+
+	/**
 	 * publish the rule to target.
 	 * 
 	 * @param content
@@ -335,4 +437,25 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 
 	}
 
+	private void recordMcaInfor(String region, String mcaName, URI callBack) {
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
+			return;
+		}
+		dataBaseStorageAdapter.insertMCAInfo(region, mcaName, callBack.toString());
+	}
+
+	private void loadMcaInforForDataBase() {
+		DataBaseStorageAdapter dataBaseStorageAdapter = ServiceHelper.findService(DataBaseStorageAdapter.class);
+		if (dataBaseStorageAdapter == null) {
+			return;
+		}
+		HashMap<String, HashMap<String, URI>> mcaMapping = dataBaseStorageAdapter.queryMCAInfoMapping();
+		if (mcaMapping != null) {
+			synchronized (_mcaPublishReferentMap) {
+				this._mcaPublishReferentMap.putAll(mcaMapping);
+			}
+		}
+
+	}
 }

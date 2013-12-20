@@ -1,5 +1,6 @@
 package com.secpro.platform.monitoring.schedule.storages;
 
+import java.net.URI;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -146,6 +147,38 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 			insertSQL.setLength(0);
 		}
 		updateRecordsBatch(batchList);
+	}
+
+	/**
+	 * record the MCA information
+	 * 
+	 * @param region
+	 * @param mcaName
+	 * @param callback
+	 * @return
+	 */
+	public int insertMCAInfo(String region, String mcaName, String callback) {
+		if (Assert.isEmptyString(region) == true) {
+			return 0;
+		}
+		if (Assert.isEmptyString(mcaName) == true) {
+			return 0;
+		}
+		if (Assert.isEmptyString(callback) == true) {
+			return 0;
+		}
+		// CREATE TABLE MSU_MCA_INFO
+		// (
+		// REGION VARCHAR2(50) NOT NULL,
+		// MCA_NAME VARCHAR2(100) NOT NULL,
+		// CALL_BACK VARCHAR2(100) NOT NULL,
+		// )
+		StringBuffer insertSQL = new StringBuffer();
+		insertSQL.append("INSERT INTO MSU_MCA_INFO (REGION,MCA_NAME,CALL_BACK) VALUES(");
+		insertSQL.append("'").append(region).append("',");
+		insertSQL.append("'").append(mcaName).append("',");
+		insertSQL.append("'").append(callback).append("')");
+		return updateRecords(insertSQL.toString());
 	}
 
 	/**
@@ -356,6 +389,53 @@ public class DataBaseStorageAdapter extends AbstractMetricMBean implements IServ
 				} else {
 					HashMap<String, String> ipMap = regionMap.get(region);
 					ipMap.put(ip, type_code);
+				}
+			} catch (Exception e) {
+				theLogger.exception(e);
+				continue;
+			}
+		}
+		//
+		return regionMap;
+	}
+
+	/**
+	 * get the MCA info mapping
+	 * 
+	 * @return
+	 */
+	public HashMap<String, HashMap<String, URI>> queryMCAInfoMapping() {
+
+		// CREATE TABLE MSU_MCA_INFO
+		// (
+		// REGION VARCHAR2(50) NOT NULL,
+		// MCA_NAME VARCHAR2(100) NOT NULL,
+		// CALL_BACK VARCHAR2(100) NOT NULL,
+		// )
+		// Map<region,String[]{ip,type_code}>
+		StringBuffer querySql = new StringBuffer();
+		querySql.append("SELECT REGION,MCA_NAME,CALL_BACK FROM MSU_MCA_INFO");
+
+		//
+		List<Object[]> rowData = selectRecords(querySql.toString());
+		HashMap<String, HashMap<String, URI>> regionMap = new HashMap<String, HashMap<String, URI>>();
+		if (rowData == null || rowData.isEmpty() == true) {
+			return regionMap;
+		}
+		//
+		for (int i = 0; i < rowData.size(); i++) {
+			try {
+				Object[] row = rowData.get(i);
+				String region = (String) row[0];
+				String mcaName = (String) row[1];
+				String callBack = (String) row[2];
+				if (regionMap.containsKey(region) == false) {
+					HashMap<String, URI> mcaMap = new HashMap<String, URI>();
+					mcaMap.put(mcaName, new URI(callBack));
+					regionMap.put(region, mcaMap);
+				} else {
+					HashMap<String, URI> mcaMap = regionMap.get(region);
+					mcaMap.put(mcaName, new URI(callBack));
 				}
 			} catch (Exception e) {
 				theLogger.exception(e);

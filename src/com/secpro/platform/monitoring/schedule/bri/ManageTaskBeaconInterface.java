@@ -27,6 +27,9 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 	final public static String MSU_COMMAND_TASK_UPDATE = "TOPIC-TASK-UPDATE";
 	final public static String MSU_COMMAND_TASK_REMOVE = "TOPIC-TASK-REMOVE";
 
+	final public static String MSU_COMMAND_RESOURCE_ADD = "TOPIC-RESOURCE-ADD";
+	final public static String MSU_COMMAND_RESOURCE_REMOVE = "TOPIC-RESOURCE-REMOVE";
+
 	final public static String MSU_COMMAND_SYSLOG_RULE_ADD = "TOPIC-SYSLOG-STANDARD-RULE-ADD";
 	final public static String MSU_COMMAND_SYSLOG_RULE_UPDATE = "TOPIC-SYSLOG-STANDARD-RULE-UPDATE";
 	final public static String MSU_COMMAND_SYSLOG_RULE_REMOVE = "TOPIC-SYSLOG-STANDARD-RULE-REMOVE";
@@ -125,6 +128,18 @@ public class ManageTaskBeaconInterface extends HttpServer implements IService {
 					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
 				}
 				_metricsSyslogRuleService.removeSysLogStandardRule(typeCode);
+			} else if (MSU_COMMAND_RESOURCE_ADD.equalsIgnoreCase(managementOperationType) == true) {
+				// add new FireWall resource
+				if (_metricsSyslogRuleService == null) {
+					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
+				}
+				_metricsSyslogRuleService.addFireWallResource(messageContent);
+			} else if (MSU_COMMAND_RESOURCE_REMOVE.equalsIgnoreCase(managementOperationType) == true) {
+				// remove a FireWall Resource
+				if (_metricsSyslogRuleService == null) {
+					_metricsSyslogRuleService = ServiceHelper.findService(MetricsSyslogRuleService.class);
+				}
+				_metricsSyslogRuleService.removeFireWallResource(messageContent);
 			} else {
 				theLogger.error("invilad management operation message type.");
 			}
