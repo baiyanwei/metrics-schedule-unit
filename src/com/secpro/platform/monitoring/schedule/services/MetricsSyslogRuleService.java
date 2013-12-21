@@ -310,7 +310,9 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		synchronized (this._regionFWTypeCodeMap) {
 			if (this._regionFWTypeCodeMap.containsKey(messageArray[1]) == true) {
 				HashMap<String, String> ipMap = _regionFWTypeCodeMap.get(messageArray[1]);
+				
 				if (ipMap.containsKey(messageArray[0]) == true) {
+					
 					return;
 				}
 				ipMap.put(messageArray[0], messageArray[2]);
@@ -318,15 +320,26 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 				HashMap<String, String> ipMap = new HashMap<String, String>();
 				ipMap.put(messageArray[0], messageArray[2]);
 				_regionFWTypeCodeMap.put(messageArray[1], ipMap);
+				
 			}
 		}
+		
 		HashMap<String, URI> pushBackMap = _mcaPublishReferentMap.get(messageArray[1]);
-
+		List<MSUSysLogStandardRule> ruleList = loadMSUSysLogStandardRuleFromDB(messageArray[2]);
+		if (Assert.isEmptyCollection(ruleList) == true) {
+			return;
+		}
+		JSONArray publishContentArray = new JSONArray();
+		//
+		List ipList =new ArrayList();
+		ipList.add(messageArray[0]);
+		fillAndBuildRulesMessage(ipList, messageArray[2], ruleList, publishContentArray);
 		if (pushBackMap == null || pushBackMap.isEmpty() == true) {
 			return;
 		}
+		
 		// publish the change into mca.
-		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_REMOVE, messageArray[0], pushBackMap);
+		publishSysLogStandardRuleToMCA(ManageTaskBeaconInterface.MSU_COMMAND_SYSLOG_RULE_UPDATE,publishContentArray.toString() , pushBackMap);
 
 	}
 
@@ -339,7 +352,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		if (Assert.isEmptyString(messageContent) == true) {
 			return;
 		}
-		String[] ipArray = messageContent.split(",");
+		String[] ipArray = messageContent.split("#");
 		if (ipArray == null || ipArray.length == 0) {
 			return;
 		}
