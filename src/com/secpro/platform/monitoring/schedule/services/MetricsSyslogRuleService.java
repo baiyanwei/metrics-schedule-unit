@@ -331,7 +331,7 @@ public class MetricsSyslogRuleService extends AbstractMetricMBean implements ISe
 		}
 		JSONArray publishContentArray = new JSONArray();
 		//
-		List ipList =new ArrayList();
+		List<String> ipList =new ArrayList<String>();
 		ipList.add(messageArray[0]);
 		fillAndBuildRulesMessage(ipList, messageArray[2], ruleList, publishContentArray);
 		if (pushBackMap == null || pushBackMap.isEmpty() == true) {
